@@ -27,15 +27,15 @@
 
 실습 완료 후 다음과 비슷한 구조가 됩니다.
 
-![카페 VPC 네트워크 구성](images/vpc-architecture.svg)
+![카페 VPC 네트워크 구성](images/vpc-01-architecture-ko.png)
 
 ### 관리자가 Private Instance에 접속하는 경로
 
-![SSH 접속 경로](images/ssh-access.svg)
+내 PC → Bastion Host의 퍼블릭 IP → Private Instance의 프라이빗 IP 순서로 SSH 접속함.
 
 ### Private Instance가 인터넷으로 나가는 경로
 
-![Private Instance의 인터넷 통신](images/private-egress.svg)
+Private Instance → NAT Gateway → Internet Gateway → 인터넷 순서로 통신함. 응답은 반대 경로로 돌아옴.
 
 ---
 
@@ -83,7 +83,7 @@
 
 첫 번째 Challenge에서는 다음 구조를 만듭니다.
 
-![Public 영역을 경유하는 접속](images/subnet-access.svg)
+내 PC → Bastion Host의 퍼블릭 IP → Private Instance의 프라이빗 IP 순서로 SSH 접속함.
 
 또한 Private Instance가 Public IP 없이도 NAT Gateway를 통해 인터넷으로 나갈 수 있도록 구성합니다.
 
@@ -166,9 +166,9 @@ Availability Zone
 → us-east-1a
 ```
 
-최종적으로 다음과 같이 설정되어 있으면 됩니다.
+이번 실습에서는 아래처럼 같은 AZ에 두 서브넷을 구성함. 지금은 Public Subnet을 만들고, Private Subnet은 태스크 4에서 추가함.
 
-![Public Subnet 구성](images/public-subnet-settings.svg)
+![Public Subnet 구성](images/vpc-02-subnets-ko.png)
 
 설정 후 **Create subnet**을 클릭합니다.
 
@@ -270,7 +270,7 @@ Public Route Table
 
 최종적으로 다음과 비슷한 Route가 보이면 됩니다.
 
-![Public Route Table의 라우팅](images/public-routes.svg)
+Public Route Table: `10.0.0.0/16 → local`, `0.0.0.0/0 → Lab IGW`임.
 
 > `local` Route는 VPC 내부 통신을 위해 AWS가 자동으로 제공하는 경로입니다.
 
@@ -300,7 +300,9 @@ Public Subnet
 
 ### ✅ 태스크 1 완료
 
-![Public Subnet의 인터넷 경로](images/public-route-path.svg)
+이 경로에 다음 태스크에서 만들 Bastion Host를 배치하면 아래와 같이 통신함.
+
+![Public Subnet의 인터넷 경로](images/vpc-03-public-route-ko.png)
 
 ---
 
@@ -310,7 +312,7 @@ Public Subnet
 
 Bastion Host는 외부에서 Private Network로 들어가기 위한 중간 접속 서버입니다.
 
-![SSH 접속 경로](images/ssh-access.svg)
+내 PC → Bastion Host의 퍼블릭 IP → Private Instance의 프라이빗 IP 순서로 SSH 접속함.
 
 ---
 
@@ -390,7 +392,7 @@ Running
 
 이번 태스크에서는 내 Windows PC에서 Bastion Host까지 SSH 연결이 가능한지 확인합니다.
 
-![Windows에서 Bastion 접속](images/bastion-ssh.svg)
+내 PC에서 `labsuser.pem`으로 Bastion Host의 퍼블릭 주소에 SSH 접속함.
 
 이 튜토리얼에서는 Windows의 **기본 OpenSSH `ssh` 명령**을 사용합니다.
 
@@ -467,7 +469,7 @@ icacls "labsuser.pem" /grant:r "%USERNAME%:R"
 
 즉 다음과 같은 상태를 만드는 것입니다.
 
-![labsuser.pem 파일 권한](images/labsuser-permission.svg)
+개인 키 파일은 현재 Windows 사용자만 읽을 수 있도록 권한을 제한함.
 
 > [!NOTE]
 > 이 권한 설정은 해당 PEM 파일에 대해 **처음 한 번만 수행**하면 됩니다.
@@ -572,7 +574,7 @@ Windows CMD로 돌아오면 됩니다.
 
 ### ✅ 태스크 3 완료
 
-![Bastion Host에 SSH 접속](images/bastion-key.svg)
+내 PC에서 `labsuser.pem`으로 Bastion Host의 퍼블릭 주소에 SSH 접속함.
 
 ---
 
@@ -626,13 +628,13 @@ Public Subnet을 만들 때와 동일하게 반드시 다음을 선택합니다.
 
 예를 들어 Public Subnet을 `us-east-1a`에 만들었다면:
 
-![Lab VPC의 두 서브넷](images/subnet-layout.svg)
+Private Subnet도 `us-east-1a`를 선택함.
 
 설정 후 **Create subnet**을 클릭합니다.
 
 ### ✅ 확인
 
-![Lab VPC의 두 서브넷](images/subnet-layout.svg)
+같은 AZ 안에 Public Subnet(`10.0.0.0/24`)과 Private Subnet(`10.0.1.0/24`)을 나누어 배치함.
 
 ---
 
@@ -648,13 +650,13 @@ Private Instance는 인터넷에서 직접 접근할 수 없어야 합니다.
 
 이를 위해 **NAT Gateway**를 사용합니다.
 
-![Private Instance의 인터넷 통신](images/private-egress.svg)
+Private Instance → NAT Gateway → Internet Gateway → 인터넷 순서로 통신함. 응답은 반대 경로로 돌아옴.
 
 ---
 
 ### 개념 그림: 요청의 응답과 외부의 새 접속
 
-![NAT의 요청과 응답, 외부에서 시작하는 연결의 차이](images/nat-request-response.svg)
+![NAT의 요청과 응답, 외부에서 시작하는 연결의 차이](images/vpc-05-nat-ko.png)
 
 Private Instance가 시작한 통신의 응답은 돌아올 수 있지만, 외부에서 NAT Gateway를 통해 Private Instance로 새 연결을 시작할 수는 없습니다. [AWS NAT Gateway 문서](https://docs.aws.amazon.com/vpc/latest/userguide/vpc-nat-gateway.html)
 
@@ -767,7 +769,9 @@ Private Subnet
 
 핵심은 다음과 같습니다.
 
-![Public / Private 기본 경로](images/route-comparison.svg)
+![Public / Private 기본 경로](images/vpc-06-routes-ko.png)
+
+그림의 Test Instance는 태스크 10에서 추가할 내부 통신 확인용 EC2임. VPC 내부 목적지는 NAT 대신 local 경로를 사용함.
 
 ---
 
@@ -834,7 +838,7 @@ icacls "vockey2.pem" /grant:r "%USERNAME%:R"
 
 즉 다음과 같이 `vockey2.pem`을 **현재 사용자만 읽을 수 있는 Private Key**로 준비합니다.
 
-![vockey2.pem 파일 권한](images/vockey2-permission.svg)
+개인 키 파일은 현재 Windows 사용자만 읽을 수 있도록 권한을 제한함.
 
 > [!IMPORTANT]
 > `labsuser.pem`뿐만 아니라 **새로 다운로드한 `vockey2.pem`에도 이 권한 설정을 적용**합니다.
@@ -851,7 +855,7 @@ icacls "vockey2.pem" /grant:r "%USERNAME%:R"
 
 Private Instance를 생성하기 전에 다음 두 Key의 역할을 구분해 둡니다.
 
-![두 Key Pair의 역할](images/key-pair-roles.svg)
+`labsuser.pem`은 Bastion 접속에, `vockey2.pem`은 Private Instance 접속에 사용함. 두 개인 키는 내 PC에 보관함.
 
 ---
 
@@ -967,7 +971,7 @@ sg-yyyyyyyyyyyyyyyyy
 
 이 설정은 다음과 같은 의미입니다.
 
-![Private Instance의 SSH 허용 출발지](images/security-group-source.svg)
+Private Instance SG는 출발지가 Bastion Host SG인 SSH(TCP 22)만 인바운드로 허용함.
 
 즉,
 
@@ -977,7 +981,7 @@ sg-yyyyyyyyyyyyyyyyy
 
 접속 구조는 다음과 같습니다.
 
-![SSH 접속 단계별 허용 규칙](images/ssh-security-groups.svg)
+![SSH 접속 단계별 허용 규칙](images/vpc-04-ssh-security-ko.png)
 
 ---
 
@@ -1007,7 +1011,7 @@ Source = Bastion Host SG
 
 전체 흐름은 다음과 같습니다.
 
-![SSH 접속 단계별 허용 규칙](images/ssh-security-groups.svg)
+Private Instance SG는 출발지가 Bastion Host SG인 SSH(TCP 22)만 인바운드로 허용함.
 
 ---
 
@@ -1074,13 +1078,13 @@ Private Instance의 SSH 접속은 Bastion Host SG에서 오는 트래픽만 허�
 
 현재 Bastion Host와 Private Instance는 서로 다른 Private Key를 사용합니다.
 
-![두 Key Pair의 역할](images/key-pair-roles.svg)
+`labsuser.pem`은 Bastion 접속에, `vockey2.pem`은 Private Instance 접속에 사용함. 두 개인 키는 내 PC에 보관함.
 
 Private Instance의 Private Key를 Bastion Host에 복사할 수도 있지만, Private Key를 원격 서버에 저장하는 방식은 피하는 것이 좋습니다.
 
 이번 실습에서는 **SSH Agent Forwarding**을 사용합니다.
 
-![SSH Agent Forwarding](images/agent-forwarding.svg)
+![SSH Agent Forwarding](images/vpc-07-agent-ko.png)
 
 ---
 
@@ -1226,7 +1230,7 @@ ssh ec2-user@10.0.1.25
 
 두 Key의 역할을 다시 구분하면 다음과 같습니다.
 
-![SSH 키의 사용 위치](images/key-storage.svg)
+Bastion의 SSH 클라이언트가 내 PC의 ssh-agent에 서명을 요청함. 개인 키 파일을 Bastion에 복사하지 않고 Private Instance에 인증함.
 
 Windows PC에서 Bastion Host에 접속하는 명령 예시:
 
@@ -1236,7 +1240,7 @@ ssh -A -i "labsuser.pem" ec2-user@<BASTION_PUBLIC_DNS>
 
 따라서 접속 흐름과 명령은 다음과 같습니다.
 
-![Private Instance 인증 흐름](images/agent-authentication.svg)
+Bastion의 SSH 클라이언트가 내 PC의 ssh-agent에 서명을 요청함. 개인 키 파일을 Bastion에 복사하지 않고 Private Instance에 인증함.
 
 ### ❌ Bastion Host에서 이렇게 실행하지 않음
 
@@ -1315,7 +1319,7 @@ Ctrl + C
 
 ### 패킷 이동 경로
 
-![Private Instance에서 인터넷 Ping](images/private-ping-path.svg)
+Private Instance → NAT Gateway → Internet Gateway → 인터넷 순서로 통신함. 응답은 반대 경로로 돌아옴.
 
 ---
 
@@ -1325,11 +1329,11 @@ Ctrl + C
 
 ### 관리자가 Private Instance에 접근
 
-![SSH 접속 경로](images/ssh-access.svg)
+내 PC → Bastion Host의 퍼블릭 IP → Private Instance의 프라이빗 IP 순서로 SSH 접속함.
 
 ### Private Instance가 인터넷으로 접근
 
-![Private Instance의 인터넷 통신](images/private-egress.svg)
+Private Instance → NAT Gateway → Internet Gateway → 인터넷 순서로 통신함. 응답은 반대 경로로 돌아옴.
 
 ---
 
@@ -1423,7 +1427,7 @@ Private Subnet
 
 ### ✅ 현재 상태
 
-![Private Subnet의 Network ACL](images/acl-association.svg)
+![Private Subnet의 Network ACL](images/vpc-08-acl-setup-ko.png)
 
 따라서 아직 기존 통신에는 영향을 주지 않습니다.
 
@@ -1431,7 +1435,7 @@ Private Subnet
 
 # Security Group과 Network ACL 비교
 
-![Security Group의 Stateful과 Network ACL의 Stateless 비교](images/stateful-stateless.svg)
+![Security Group의 Stateful과 Network ACL의 Stateless 비교](images/vpc-09-sg-acl-ko.png)
 
 Security Group은 허용된 요청의 응답을 자동으로 허용하지만, Network ACL은 응답도 해당 방향의 규칙으로 허용해야 합니다. [AWS 보안 계층 비교](https://docs.aws.amazon.com/vpc/latest/userguide/infrastructure-security.html)
 
@@ -1461,11 +1465,7 @@ Network ACL에서는 **Rule Number가 매우 중요**합니다.
 
 이번에는 Public Subnet에 테스트용 EC2 Instance를 하나 더 생성합니다.
 
-그 후
-
-![Private Instance에서 Test Instance로 Ping](images/icmp-test.svg)
-
-방향으로 Ping을 보내고 Network ACL에서 ICMP를 차단해 봅니다.
+그 후 Private Instance에서 Test Instance의 프라이빗 IP로 ping을 보내고, Network ACL에서 ICMP를 차단함. 이 통신은 VPC 내부의 local 경로를 사용함.
 
 ---
 
@@ -1586,7 +1586,7 @@ Private Subnet과 연결된 `Lab Network ACL`의
 
 Network ACL은 **작은 Rule Number부터 먼저 평가**합니다.
 
-![Network ACL 규칙 평가 순서](images/acl-rule-order.svg)
+![Network ACL 규칙 평가 순서](images/vpc-10-icmp-deny-ko.png)
 
 따라서 Test Instance로 향하는 ICMP Traffic은 50번 규칙에서 먼저 차단됩니다.
 
@@ -1606,11 +1606,11 @@ Network ACL을 변경한 뒤에는 응답이 더 이상 나타나지 않아야 �
 
 ### 변경 전
 
-![Ping 요청과 응답](images/icmp-roundtrip.svg)
+Private Instance → Test Instance의 프라이빗 IP로 ICMP 요청을 보내고 응답을 받음. VPC 내부의 local 경로를 사용함.
 
 ### 변경 후
 
-![Network ACL로 ICMP 차단](images/acl-deny.svg)
+Private Subnet의 아웃바운드 NACL이 Test Instance로 향하는 ICMP 요청을 50번 DENY 규칙으로 차단함.
 
 ---
 
@@ -1686,27 +1686,27 @@ Lab Network ACL
 
 ## Public Subnet
 
-![Public Route Table의 라우팅](images/public-routes.svg)
+Public Route Table: `10.0.0.0/16 → local`, `0.0.0.0/0 → Lab IGW`임.
 
 ## Private Subnet
 
-![Private Route Table의 라우팅](images/private-routes.svg)
+Private Route Table: `10.0.0.0/16 → local`, `0.0.0.0/0 → Lab NAT Gateway`임.
 
 핵심:
 
-![Public / Private 기본 경로](images/route-comparison.svg)
+Public의 기본 경로는 IGW, Private의 기본 경로는 NAT Gateway임. VPC 내부 통신은 두 서브넷 모두 local 경로를 사용함.
 
 ---
 
 # 6. 최종 SSH 구조
 
-![키를 로컬에 보관하는 SSH 접속](images/ssh-keys-summary.svg)
+Bastion의 SSH 클라이언트가 내 PC의 ssh-agent에 서명을 요청함. 개인 키 파일을 Bastion에 복사하지 않고 Private Instance에 인증함.
 
 ---
 
 # 7. 이번 실습에서 반드시 이해해야 하는 개념
 
-![라우팅과 보안 규칙의 역할 구분](images/route-and-firewall.svg)
+Route Table은 패킷이 갈 경로를 선택하고, Security Group과 Network ACL은 해당 통신의 허용 여부를 판단함.
 
 Route Table은 어디로 보낼지 결정하고, Network ACL과 Security Group은 통과시킬지 결정합니다. [AWS 보안 계층 설명](https://docs.aws.amazon.com/vpc/latest/userguide/infrastructure-security.html)
 
@@ -1714,7 +1714,7 @@ Route Table은 어디로 보낼지 결정하고, Network ACL과 Security Group�
 
 다음과 같은 Route가 필요합니다.
 
-![인터넷 경로를 결정하는 Route Table](images/route-table-role.svg)
+서브넷에 연결된 Route Table의 `0.0.0.0/0 → IGW` 경로가 직접 인터넷 통신 경로를 제공함.
 
 EC2가 인터넷과 직접 통신하려면 일반적으로 Public IP도 필요합니다.
 
@@ -1724,17 +1724,17 @@ EC2가 인터넷과 직접 통신하려면 일반적으로 Public IP도 필요�
 
 따라서 인터넷에서 다음과 같이 직접 접근하도록 구성하지 않습니다.
 
-![Private Instance 직접 접근 불가](images/private-no-direct-access.svg)
+Private Instance에는 퍼블릭 IP와 IGW로 향하는 직접 기본 경로가 없음. 외부에서 직접 접속할 수 없으며, NAT를 통해 시작한 통신의 응답은 받을 수 있음.
 
 관리자는 Bastion Host를 거칩니다.
 
-![SSH 접속 경로](images/ssh-access.svg)
+내 PC → Bastion Host의 퍼블릭 IP → Private Instance의 프라이빗 IP 순서로 SSH 접속함.
 
 ---
 
 ## 7-3. Private Instance는 NAT Gateway를 통해 인터넷으로 나감
 
-![Private Instance의 인터넷 통신](images/private-egress.svg)
+Private Instance → NAT Gateway → Internet Gateway → 인터넷 순서로 통신함. 응답은 반대 경로로 돌아옴.
 
 Private Instance에 Public IP가 없어도 OS 업데이트나 패키지 다운로드가 가능합니다.
 
@@ -1742,7 +1742,7 @@ Private Instance에 Public IP가 없어도 OS 업데이트나 패키지 다운�
 
 ## 7-4. NAT Gateway는 Public Subnet에 위치함
 
-![NAT Gateway의 위치](images/nat-placement.svg)
+NAT Gateway는 Public Subnet에 배치하고 Elastic IP를 연결함. Private Subnet의 기본 경로가 이 NAT Gateway를 가리키도록 설정함.
 
 ---
 
@@ -1750,13 +1750,13 @@ Private Instance에 Public IP가 없어도 OS 업데이트나 패키지 다운�
 
 `vockey2.pem`은 Windows PC에 보관하고 **SSH Agent Forwarding**을 사용합니다.
 
-![SSH Agent Forwarding](images/agent-forwarding.svg)
+Bastion의 SSH 클라이언트가 내 PC의 ssh-agent에 서명을 요청함. 개인 키 파일을 Bastion에 복사하지 않고 Private Instance에 인증함.
 
 ---
 
 ## 7-6. Security Group과 Network ACL의 역할이 다름
 
-![Network ACL과 Security Group의 적용 범위](images/security-boundaries.svg)
+Security Group은 인스턴스의 네트워크 인터페이스에, Network ACL은 서브넷 경계에 적용함.
 
 - **Security Group** → EC2/Network Interface 수준의 접근 제어
 - **Network ACL** → Subnet 수준의 접근 제어
@@ -1771,11 +1771,11 @@ Private Instance에 Public IP가 없어도 OS 업데이트나 패키지 다운�
 
 이 문제들은 단순히 정답을 외우기보다, 앞에서 직접 구성한 다음 네트워크 흐름과 연결해서 이해하는 것이 중요합니다.
 
-![실습의 전체 통신 흐름](images/end-to-end.svg)
+관리 접속은 Bastion을, Private Instance의 인터넷 통신은 NAT Gateway를 경유함. 두 경로에서 보안 규칙도 통과해야 함.
 
 또한 보안 측면에서는 다음 두 계층을 함께 생각합니다.
 
-![Network ACL과 Security Group의 적용 범위](images/security-boundaries.svg)
+Security Group은 인스턴스의 네트워크 인터페이스에, Network ACL은 서브넷 경계에 적용함.
 
 ---
 
@@ -1818,7 +1818,7 @@ Internet Gateway(IGW)의 핵심 역할은 **VPC와 인터넷 사이의 통신 �
 
 따라서 Bastion Host의 인터넷 통신 구조는 다음과 같습니다.
 
-![Public Instance의 인터넷 통신](images/public-instance-egress.svg)
+퍼블릭 IP가 있는 인스턴스는 Public Subnet → IGW → 인터넷 경로를 사용함. 보안 규칙도 해당 통신을 허용해야 함.
 
 여기서 중요한 점은 **Internet Gateway가 EC2에 Public IP를 만들어 주는 것은 아니라는 것**입니다.
 
@@ -1877,13 +1877,13 @@ Private Instance에는 Public IP를 할당하지 않았습니다.
 
 따라서 Private Instance가 OS 업데이트나 패키지를 다운로드할 때 패킷은 다음과 같이 이동합니다.
 
-![Private Route Table을 통한 인터넷 통신](images/private-route-full.svg)
+Private Instance → NAT Gateway → Internet Gateway → 인터넷 순서로 통신함. 응답은 반대 경로로 돌아옴.
 
 NAT Gateway는 **Public Subnet에 위치**하며 Elastic IP를 사용하여 인터넷과 통신합니다.
 
 하지만 이 문제에서 Private Instance의 인터넷 연결을 가능하게 하는 핵심 구성 요소를 묻고 있으므로 정답은 **NAT Gateway**입니다.
 
-![NAT Gateway를 통한 아웃바운드 통신](images/nat-egress-short.svg)
+Private Instance → NAT Gateway → Internet Gateway → 인터넷 순서로 통신함. 응답은 반대 경로로 돌아옴.
 
 > **핵심**
 >
@@ -1922,17 +1922,17 @@ No
 
 이번 실습에서 Private Instance는 다음과 같이 구성했습니다.
 
-![Private Instance의 접근 조건](images/private-instance-properties.svg)
+Private Instance에는 퍼블릭 IP와 IGW로 향하는 직접 기본 경로가 없음. 외부에서 직접 접속할 수 없으며, NAT를 통해 시작한 통신의 응답은 받을 수 있음.
 
 따라서 인터넷에서 Private Instance로 직접 SSH 접속하는 구조가 아닙니다.
 
 관리자는 다음 경로를 이용합니다.
 
-![SSH 접속 경로](images/ssh-access.svg)
+내 PC → Bastion Host의 퍼블릭 IP → Private Instance의 프라이빗 IP 순서로 SSH 접속함.
 
 Private Instance가 NAT Gateway를 이용하여 인터넷으로 **나갈 수 있다**는 것과 인터넷에서 Private Instance로 **직접 들어올 수 있다**는 것은 서로 다른 이야기입니다.
 
-![Private Instance 통신 방향](images/private-direction.svg)
+Private Instance에는 퍼블릭 IP와 IGW로 향하는 직접 기본 경로가 없음. 외부에서 직접 접속할 수 없으며, NAT를 통해 시작한 통신의 응답은 받을 수 있음.
 
 > **핵심**
 >
@@ -1979,13 +1979,13 @@ Key pairs can't be reused                    ✕
 
 이번 실습에서는 의도적으로 Key를 분리했습니다.
 
-![두 Key Pair의 역할](images/key-pair-roles.svg)
+`labsuser.pem`은 Bastion 접속에, `vockey2.pem`은 Private Instance 접속에 사용함. 두 개인 키는 내 PC에 보관함.
 
 이렇게 Key를 분리하면 Bastion Host와 Private Instance의 인증 정보를 분리할 수 있습니다.
 
 또한 이번 실습에서는 Private Instance용 `vockey2.pem` 파일 자체를 Bastion Host에 복사하지 않습니다.
 
-![SSH Agent Forwarding](images/agent-forwarding.svg)
+Bastion의 SSH 클라이언트가 내 PC의 ssh-agent에 서명을 요청함. 개인 키 파일을 Bastion에 복사하지 않고 Private Instance에 인증함.
 
 따라서 Bastion Host에는 Private Instance용 Private Key 파일을 저장하지 않으면서도 Agent Forwarding을 통해 인증할 수 있습니다.
 
@@ -2036,7 +2036,7 @@ Ping은 SSH를 사용하지 않습니다.
 
 Ping은 **ICMP(Internet Control Message Protocol)** 를 사용합니다.
 
-![SSH와 Ping은 서로 다른 프로토콜](images/protocols.svg)
+SSH는 TCP 22, ping은 ICMP를 사용함. SSH만 허용한 규칙은 ICMP 요청을 허용하지 않음.
 
 따라서 Bastion Host에서 Private Instance로 다음 명령을 실행하더라도:
 
@@ -2046,7 +2046,7 @@ ping <PRIVATE_INSTANCE_IP>
 
 Private Instance의 Security Group에서 ICMP Inbound를 허용하지 않았기 때문에 응답을 받을 수 없습니다.
 
-![SSH 허용만으로 Ping이 허용되지는 않음](images/sg-icmp-deny.svg)
+SSH는 TCP 22, ping은 ICMP를 사용함. SSH만 허용한 규칙은 ICMP 요청을 허용하지 않음.
 
 반면 SSH는 허용되어 있으므로 다음은 가능합니다.
 
@@ -2093,7 +2093,7 @@ Outbound on private and inbound on test
 
 이번 실습에서는 Private Instance에서 Test Instance로 Ping을 보냈습니다.
 
-![Private Instance에서 Test Instance로 Ping](images/icmp-test.svg)
+Private Instance → Test Instance의 프라이빗 IP로 ICMP 요청을 보내고 응답을 받음. VPC 내부의 local 경로를 사용함.
 
 따라서 요청 패킷이 나가기 위해서는:
 
@@ -2118,11 +2118,11 @@ Inbound
 
 따라서 요청 방향만 보면 다음과 같습니다.
 
-![Ping 요청에 필요한 방향별 규칙](images/icmp-directions.svg)
+요청은 Private Instance의 아웃바운드 SG와 Test Instance의 인바운드 SG에서 허용해야 함. 각 서브넷의 NACL도 해당 방향을 허용해야 함.
 
 그러면 Test Instance가 보내는 **Echo Reply**는 어떻게 Private Instance로 돌아올까요?
 
-![Ping 응답 방향](images/icmp-reply.svg)
+ICMP 응답은 Test Instance → Private Instance 방향으로 돌아옴.
 
 여기서 Security Group의 중요한 특성이 등장합니다.
 
@@ -2132,7 +2132,7 @@ Security Group은 **Stateful**이므로, 허용된 통신을 먼저 시작했다
 
 즉 Private Instance가 먼저 Ping을 보냈다면:
 
-![Security Group의 Stateful 응답 처리](images/stateful-roundtrip.svg)
+SG는 허용된 요청의 응답을 자동 허용함. NACL은 응답 방향의 규칙도 별도로 확인함.
 
 응답을 받기 위해 Private Instance Security Group에 별도의 ICMP Inbound Rule을 추가할 필요가 없습니다.
 
@@ -2187,19 +2187,19 @@ Outbound on private and inbound on test
 
 ### ① Public과 Private의 인터넷 경로
 
-![Public / Private 인터넷 경로](images/egress-summary.svg)
+Public의 기본 경로는 IGW, Private의 기본 경로는 NAT Gateway임. VPC 내부 통신은 두 서브넷 모두 local 경로를 사용함.
 
 ### ② 관리 접속 경로
 
-![SSH 접속 경로](images/ssh-access.svg)
+내 PC → Bastion Host의 퍼블릭 IP → Private Instance의 프라이빗 IP 순서로 SSH 접속함.
 
 ### ③ Ping과 SSH는 다른 프로토콜
 
-![SSH와 Ping은 서로 다른 프로토콜](images/protocols.svg)
+SSH는 TCP 22, ping은 ICMP를 사용함. SSH만 허용한 규칙은 ICMP 요청을 허용하지 않음.
 
 ### ④ Security Group은 Stateful
 
-![Security Group의 응답 처리](images/stateful-response.svg)
+SG는 허용된 요청의 응답을 자동 허용함. NACL은 응답 방향의 규칙도 별도로 확인함.
 
 이 네 가지를 이해하면 Challenge Lab의 6개 문제를 대부분 자연스럽게 풀 수 있습니다.
 
@@ -2265,7 +2265,7 @@ Ended AWS Lab Successfully
 
 # 11. 전체 실습 한눈에 보기
 
-![실습 전체 순서](images/lab-workflow.svg)
+네트워크 구성 → Bastion 접속 → NAT 경로 설정 → Private Instance 접속 → NACL로 ICMP 차단 → 제출 → 실습 종료 순서로 진행함.
 
 ---
 
@@ -2273,14 +2273,14 @@ Ended AWS Lab Successfully
 
 ## 외부에서 Private Instance 관리
 
-![Public 영역을 경유하는 접속](images/subnet-access.svg)
+내 PC → Bastion Host의 퍼블릭 IP → Private Instance의 프라이빗 IP 순서로 SSH 접속함.
 
 ## Private Instance의 인터넷 접근
 
-![Private Instance의 인터넷 통신](images/private-egress.svg)
+Private Instance → NAT Gateway → Internet Gateway → 인터넷 순서로 통신함. 응답은 반대 경로로 돌아옴.
 
 ## 네트워크 보안 계층
 
-![Network ACL과 Security Group의 적용 범위](images/security-boundaries.svg)
+Security Group은 인스턴스의 네트워크 인터페이스에, Network ACL은 서브넷 경계에 적용함.
 
 이 세 가지 흐름을 이해하면 이번 VPC 네트워킹 실습의 핵심을 이해한 것입니다.
