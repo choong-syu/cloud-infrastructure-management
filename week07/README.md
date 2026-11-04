@@ -111,9 +111,17 @@ EOF
 
 ### 04. (학교 Ubuntu · 일반 사용자) 초기화·형식 정리·문법 확인
 
+아래 명령어를 하나씩 실행하고, 각 명령이 성공하면 다음 명령으로 진행합니다.
+
 ```bash
 terraform init
+```
+
+```bash
 terraform fmt -recursive
+```
+
+```bash
 terraform validate
 ```
 
@@ -129,14 +137,14 @@ terraform validate
 ### 05. (학교 Ubuntu · 일반 사용자) 처음 생성할 자원의 계획 확인
 
 ```bash
-terraform plan -out=create.tfplan
+terraform plan
 ```
 
 **명령어 풀이**
 
 - `plan`은 코드·State·AWS의 현재 상태를 비교합니다. 이 단계는 자원을 생성·변경하지 않습니다.
 - `+`는 생성, `~`는 제자리 수정, `-`는 삭제, `-/+`는 교체입니다.
-- `-out`은 이 계획을 저장합니다. 예상과 다르면 다음 apply를 실행하지 않습니다.
+- 예상과 다르면 다음 적용 단계로 진행하지 않습니다.
 
 **확인할 결과**
 
@@ -145,12 +153,12 @@ Plan: 1 to add, 0 to change, 0 to destroy.
 ### 06. (학교 Ubuntu · 일반 사용자) 검토한 계획 적용
 
 ```bash
-terraform apply create.tfplan
+terraform apply
 ```
 
 **명령어 풀이**
 
-- 저장된 계획을 적용합니다. 추가 `yes` 질문이 없으므로 **직전 계획을 검토한 뒤** 실행합니다.
+- `apply`는 계획을 다시 보여 줍니다. **생성·변경·삭제 대상을 확인한 뒤** 승인 질문에 `yes`를 입력합니다.
 - 실행 중에는 Ctrl+C로 중단하지 말고 완료를 기다립니다. 오류가 나면 State를 지우지 말고 원인을 해결한 뒤 새로 plan합니다.
 
 **확인할 결과**
@@ -161,22 +169,21 @@ terraform apply create.tfplan
 
 ```bash
 terraform state list
+```
+
+```bash
 terraform state show aws_vpc.lab
-terraform output -raw vpc_id > before-vpc-id.txt
-ci_vpc_id=$(terraform output -raw vpc_id)
-aws ec2 describe-vpcs --vpc-ids "$ci_vpc_id" --query 'Vpcs[0].{ID:VpcId,CIDR:CidrBlock,Tags:Tags}'
 ```
 
 **명령어 풀이**
 
 - `state list`는 이 폴더가 관리하는 자원 주소를 보여 줍니다.
 - `state show`는 State에 저장된 속성을 읽습니다. AWS 현재 상태를 직접 확인할 때는 AWS 조회 명령이나 새 plan을 사용합니다.
-- `output -raw`는 문자열의 따옴표를 제거합니다. ID를 파일에 저장해 변경 전후를 비교합니다.
 - AWS 콘솔에서도 VPC 메뉴에서 이 ID를 검색하고 Name·Lesson 태그를 확인합니다.
 
 **확인할 결과**
 
-State와 AWS 조회의 VPC ID가 같고, CIDR은 10.70.0.0/16입니다.
+State에 표시된 VPC ID와 AWS 콘솔의 VPC ID가 같고, CIDR은 10.70.0.0/16입니다.
 
 ### 08. (학교 Ubuntu · 일반 사용자) 태그 값을 코드에서 변경
 
@@ -192,14 +199,14 @@ terraform fmt
 ### 09. (학교 Ubuntu · 일반 사용자) 변경 계획 확인
 
 ```bash
-terraform plan -out=tag.tfplan
+terraform plan
 ```
 
 **명령어 풀이**
 
 - `plan`은 코드·State·AWS의 현재 상태를 비교합니다. 이 단계는 자원을 생성·변경하지 않습니다.
 - `+`는 생성, `~`는 제자리 수정, `-`는 삭제, `-/+`는 교체입니다.
-- `-out`은 이 계획을 저장합니다. 예상과 다르면 다음 apply를 실행하지 않습니다.
+- 예상과 다르면 다음 적용 단계로 진행하지 않습니다.
 
 **확인할 결과**
 
@@ -208,12 +215,12 @@ Plan: 0 to add, 1 to change, 0 to destroy. VPC는 `~ update in-place`입니다.
 ### 10. (학교 Ubuntu · 일반 사용자) 검토한 계획 적용
 
 ```bash
-terraform apply tag.tfplan
+terraform apply
 ```
 
 **명령어 풀이**
 
-- 저장된 계획을 적용합니다. 추가 `yes` 질문이 없으므로 **직전 계획을 검토한 뒤** 실행합니다.
+- `apply`는 계획을 다시 보여 줍니다. **생성·변경·삭제 대상을 확인한 뒤** 승인 질문에 `yes`를 입력합니다.
 - 실행 중에는 Ctrl+C로 중단하지 말고 완료를 기다립니다. 오류가 나면 State를 지우지 말고 원인을 해결한 뒤 새로 plan합니다.
 
 **확인할 결과**
@@ -223,15 +230,16 @@ terraform apply tag.tfplan
 ### 11. (학교 Ubuntu · 일반 사용자) VPC가 교체되지 않았는지 확인
 
 ```bash
-ci_vpc_id=$(terraform output -raw vpc_id)
-test "$(cat before-vpc-id.txt)" = "$ci_vpc_id" && printf 'VPC ID 유지 확인
-'
-aws ec2 describe-vpcs --vpc-ids "$ci_vpc_id" --query 'Vpcs[0].Tags'
+terraform output
 ```
 
 **명령어 풀이**
 
-`test`가 변경 전후 ID를 비교합니다. `&&` 뒤의 문장은 비교가 성공했을 때만 실행됩니다. Lesson 태그는 updated, VPC ID는 이전과 같아야 합니다.
+`output`에 표시된 `vpc_id`를 06단계의 생성 완료 후 출력된 `vpc_id`와 눈으로 비교합니다. 10단계의 태그 변경 완료 후 출력값도 같은 ID여야 합니다.
+
+**확인할 결과**
+
+태그 변경 전후 `vpc_id`가 같으면 VPC가 교체되지 않은 것입니다.
 
 ### 12. (학교 Ubuntu · 일반 사용자) 다시 실행해 변경 없음 확인
 
@@ -250,19 +258,19 @@ terraform plan
 
 ## 자원 정리 — 제출 전에 수행
 
-이 단계는 현재 폴더의 State가 관리하는 자원을 삭제합니다. 다른 주차 폴더에서 실행하지 않습니다. `terraform destroy`는 삭제 계획과 확인을 한 명령으로 수행하는 명령입니다. 여기서는 삭제 대상을 파일로 저장해 읽은 뒤 적용하는 같은 목적의 두 단계 절차를 사용합니다.
+이 단계는 현재 폴더의 State가 관리하는 자원을 삭제합니다. 다른 주차 폴더에서 실행하지 않습니다. `terraform destroy`는 삭제 계획과 확인을 한 명령으로 수행하는 명령입니다. 여기서는 `terraform plan -destroy`로 삭제 대상을 먼저 확인한 뒤 `terraform destroy`로 삭제합니다.
 
 ### 13. (학교 Ubuntu · 일반 사용자) 삭제 대상 확인
 
 ```bash
-terraform plan -destroy -out=cleanup.tfplan
+terraform plan -destroy
 ```
 
 **명령어 풀이**
 
 - `plan`은 코드·State·AWS의 현재 상태를 비교합니다. 이 단계는 자원을 생성·변경하지 않습니다.
 - `+`는 생성, `~`는 제자리 수정, `-`는 삭제, `-/+`는 교체입니다.
-- `-out`은 이 계획을 저장합니다. 예상과 다르면 다음 apply를 실행하지 않습니다.
+- 예상과 다르면 다음 적용 단계로 진행하지 않습니다.
 
 **확인할 결과**
 
@@ -271,17 +279,17 @@ Plan: 0 to add, 0 to change, 1 to destroy.
 ### 14. (학교 Ubuntu · 일반 사용자) 검토한 계획 적용
 
 ```bash
-terraform apply cleanup.tfplan
+terraform destroy
 ```
 
 **명령어 풀이**
 
-- 저장된 계획을 적용합니다. 추가 `yes` 질문이 없으므로 **직전 계획을 검토한 뒤** 실행합니다.
+- `destroy`는 삭제 계획을 다시 보여 줍니다. **삭제 대상이 이번 실습의 VPC인지 확인한 뒤** 승인 질문에 `yes`를 입력합니다.
 - 실행 중에는 Ctrl+C로 중단하지 말고 완료를 기다립니다. 오류가 나면 State를 지우지 말고 원인을 해결한 뒤 새로 plan합니다.
 
 **확인할 결과**
 
-`Apply complete!`와 변경 수가 표시됩니다. 출력 주소와 ID는 계정·실행마다 다릅니다.
+`Destroy complete! Resources: 1 destroyed.`가 표시됩니다.
 
 ### 15. (학교 Ubuntu · 일반 사용자) 관리 자원이 남아 있지 않은지 확인
 
