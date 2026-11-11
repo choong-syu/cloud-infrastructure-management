@@ -151,9 +151,9 @@ Learner Lab에서 **Start Lab → Ready → AWS Details → AWS CLI → Show** �
 ```bash
 {
 source "$HOME/.config/cloud-infra/env.sh"
-read -rsp 'Access Key ID: ' ci_access; printf '\n'
-read -rsp 'Secret Access Key: ' ci_secret; printf '\n'
-read -rsp 'Session Token: ' ci_token; printf '\n'
+read -rp 'Access Key ID: ' ci_access; printf '\n'
+read -rp 'Secret Access Key: ' ci_secret; printf '\n'
+read -rp 'Session Token: ' ci_token; printf '\n'
 if [ -n "$ci_access" ] && [ -n "$ci_secret" ] && [ -n "$ci_token" ]; then
   (umask 077; printf '[default]\naws_access_key_id=%s\naws_secret_access_key=%s\naws_session_token=%s\n' \
     "$ci_access" "$ci_secret" "$ci_token" > "$AWS_SHARED_CREDENTIALS_FILE") &&
