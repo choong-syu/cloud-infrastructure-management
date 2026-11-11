@@ -10,6 +10,8 @@
 
 Provider와 Resource를 구분하고, `fmt`로 서식을 정리한 뒤 `validate`로 구성 오류를 찾아 수정합니다. 계획을 읽은 뒤 적용하며, 태그 변경이 VPC 교체 없이 이루어지는지 확인합니다. 140분 수업: 이론 50분 · 실습 75분 · 정리 15분. 도구 설치는 수업 전에 완료합니다.
 
+![VPC 하나의 생성, 태그 변경과 ID 유지, 변경 없음 확인, 삭제로 이어지는 Terraform 실습 흐름.](assets/vpc-lifecycle.png)
+
 ## 실습 준비와 설정값
 
 | 항목 | 설정값 |
@@ -47,6 +49,8 @@ pwd
 현재 경로가 `/home/자신의계정/cloud-infra/week07`입니다.
 
 ### 02. (학교 Ubuntu · 일반 사용자) providers.tf 작성
+
+![providers.tf와 main.tf를 함께 읽는 Terraform이 AWS Provider를 통해 원하는 VPC를 AWS에 반영하는 구조.](assets/terraform-files-provider.png)
 
 아래 코드는 `fmt`의 효과를 확인하도록 들여쓰기와 등호 주변 공백을 일부러 불규칙하게 작성했습니다. **지금은 직접 정렬하지 말고 그대로 복사합니다.**
 
@@ -114,6 +118,8 @@ EOF
 성공하면 별도 출력이 없습니다. `cat main.tf`로 작성한 내용을 읽을 수 있습니다. 코드 블록은 첫 `cat`부터 마지막 `EOF`까지 전체를 복사합니다.
 
 ### 04. (학교 Ubuntu · 일반 사용자) 초기화·서식 정리·구성 오류 수정
+
+![fmt는 공백과 들여쓰기만 정리하고, validate는 iid 속성 오타를 발견합니다. id로 직접 수정한 뒤 검증에 성공하는 흐름.](assets/terraform-fmt-validate.png)
 
 아래 명령어를 하나씩 실행하며 결과를 확인합니다. **04-3의 첫 번째 `validate` 실패는 의도된 결과입니다.** 오류를 수정하고 04-4에서 검증에 성공한 뒤에만 05단계로 진행합니다. 이 과정에 약 5~8분을 사용합니다.
 
@@ -244,6 +250,8 @@ terraform apply
 `Apply complete!`와 변경 수가 표시됩니다. 출력 주소와 ID는 계정·실행마다 다릅니다.
 
 ### 07. (학교 Ubuntu · 일반 사용자) State와 AWS의 VPC ID 비교
+
+![State가 코드 주소 aws_vpc.lab과 실제 AWS VPC의 ID를 연결합니다. State 파일을 삭제해도 AWS 자원은 삭제되지 않습니다.](assets/terraform-state-mapping.png)
 
 ```bash
 terraform state list

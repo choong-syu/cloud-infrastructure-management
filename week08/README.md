@@ -10,12 +10,9 @@
 
 변수 선언·변수 값·출력을 구분하고 AWS API 인증, SSH 키, 인스턴스 프로파일의 역할을 설명합니다. 이론 50분 · 실습 75분 · 정리 15분.
 
-```mermaid
-flowchart LR
-  PC[학생 PC] -->|학교 SSH 계정| VM[학교 Ubuntu]
-  VM -->|임시 API 자격 증명| API[AWS API / Terraform]
-  VM -->|SSH 개인 키 · TCP 22| EC2[Public Subnet의 EC2]
-```
+학생 PC에서 학교 SSH 계정으로 학교 Ubuntu에 접속한 뒤, 다음과 같이 실행 위치와 목적에 맞는 인증 수단을 사용합니다.
+
+![학교 Ubuntu의 Terraform은 임시 API 자격 증명으로 AWS API를 호출하고, SSH는 개인 키로 EC2에 로그인합니다. EC2 내부 프로그램의 AWS 접근에는 LabInstanceProfile을 사용합니다.](assets/authentication-routes.png)
 
 EC2의 `LabInstanceProfile`은 EC2 내부 프로그램의 AWS 접근을 위한 기존 프로파일입니다. 학교 VM의 Terraform 인증이나 SSH 로그인 권한을 대신하지 않습니다.
 
@@ -120,6 +117,8 @@ Provider 버전과 리전을 고정하고 생성 자원에 Course·Week 태그�
 
 ### 04. (학교 Ubuntu · 일반 사용자) variables.tf 작성
 
+![변수 선언과 입력값이 VPC, Subnet, EC2의 자원 참조로 연결되고, 생성 후 State에 저장된 public_ip 출력값을 SSH 접속에 사용하는 흐름.](assets/variables-references-outputs.png)
+
 ```bash
 cat > variables.tf <<'EOF'
 variable "name" {
@@ -199,6 +198,8 @@ PY
 자신의 실행 환경에서 조회한 IPv4/32가 나옵니다. IP가 바뀌면 이 단계부터 다시 실행하고 plan/apply합니다.
 
 ### 07. (학교 Ubuntu · 일반 사용자) network.tf 작성
+
+![학교 Ubuntu에서 인터넷과 Internet Gateway를 거쳐 Public Subnet의 EC2에 SSH 접속하는 구조. Route Table은 서브넷에 연결하며, EC2의 Security Group은 학교 출구 IP의 TCP 22만 허용합니다.](assets/public-subnet-ssh-path.png)
 
 ```bash
 cat > network.tf <<'EOF'
