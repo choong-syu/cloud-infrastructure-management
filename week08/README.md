@@ -61,7 +61,7 @@ pwd
 
 ![학교 Ubuntu의 SSH 키 쌍: 공개 키는 Terraform으로 AWS에 등록해 EC2에 설정하고, 개인 키는 로컬에 보관해 SSH 인증에 사용합니다.](assets/ec2-ssh-keypair.png)
 
-**개인 키 파일은 EC2로 전송하지 않습니다.** 이 단계에서는 키 파일을 준비하고, 공개 키 등록과 EC2 생성은 12단계의 `terraform apply`, SSH 접속은 14단계에서 진행합니다.
+**개인 키 파일은 EC2로 전송하지 않습니다.** 이 단계에서는 키 파일을 준비하고, 공개 키 등록과 EC2 생성은 12단계의 `terraform apply`, SSH 접속은 15단계에서 진행합니다.
 
 ```bash
 mkdir -p "$HOME/.ssh"
@@ -407,7 +407,36 @@ printf 'EC2 상태 검사 통과
 - `aws ec2 wait`는 AWS의 상태 검사가 통과할 때까지 기다립니다. 수 분간 출력이 없어도 정상입니다.
 - 오래 실패하면 EC2 콘솔에서 인스턴스 상태·상태 검사·시스템 로그를 확인합니다.
 
-### 14. (학교 Ubuntu · 일반 사용자) 학교 VM에서 EC2에 원격 명령 실행
+### 14. (학교 Ubuntu · 일반 사용자) 구성된 자원 목록 확인
+
+```bash
+terraform state list
+```
+
+**명령어 풀이**
+
+- `state list`는 현재 작업 폴더의 State에 기록된 자원 주소를 보여 줍니다. AWS 전체 자원을 실시간으로 조회하는 명령은 아닙니다.
+- 주소는 `자원 종류.코드 안의 이름` 형식입니다. 예를 들어 `aws_instance.web`은 `compute.tf`에서 선언한 EC2입니다.
+- VPC, 서브넷, 라우팅, Security Group, Key Pair, EC2가 목록에 있는지 확인한 뒤 SSH 접속으로 진행합니다.
+
+**확인할 결과**
+
+이번 실습에서 관리하는 자원 10개의 주소가 표시됩니다.
+
+```text
+aws_instance.web
+aws_internet_gateway.lab
+aws_key_pair.lab
+aws_route_table.public
+aws_route_table_association.public
+aws_security_group.web
+aws_subnet.public
+aws_vpc.lab
+aws_vpc_security_group_egress_rule.outbound
+aws_vpc_security_group_ingress_rule.ssh
+```
+
+### 15. (학교 Ubuntu · 일반 사용자) 학교 VM에서 EC2에 원격 명령 실행
 
 ```bash
 ci_public_ip=$(terraform output -raw public_ip)
@@ -426,7 +455,7 @@ ssh -i "$HOME/.ssh/cloud-infra-lab" -o IdentitiesOnly=yes -o StrictHostKeyChecki
 
 서버의 hostname, ubuntu, status: done이 표시됩니다.
 
-### 15. (학교 Ubuntu · 일반 사용자) 다시 실행해 변경 없음 확인
+### 16. (학교 Ubuntu · 일반 사용자) 다시 실행해 변경 없음 확인
 
 ```bash
 terraform plan
@@ -441,11 +470,11 @@ terraform plan
 
 `No changes. Your infrastructure matches the configuration.`
 
-## 자원 정리 — 제출 전에 수행
+## 자원 정리
 
 이 단계는 현재 폴더의 State가 관리하는 자원을 삭제합니다. 다른 주차 폴더에서 실행하지 않습니다. `terraform destroy`는 삭제 계획과 확인을 한 명령으로 수행하는 명령입니다. 여기서는 삭제 대상을 파일로 저장해 읽은 뒤 적용하는 같은 목적의 두 단계 절차를 사용합니다.
 
-### 16. (학교 Ubuntu · 일반 사용자) 삭제 대상 확인
+### 17. (학교 Ubuntu · 일반 사용자) 삭제 대상 확인
 
 ```bash
 terraform plan -destroy -out=cleanup.tfplan
@@ -461,7 +490,7 @@ terraform plan -destroy -out=cleanup.tfplan
 
 Plan: 0 to add, 0 to change, 10 to destroy.
 
-### 17. (학교 Ubuntu · 일반 사용자) 검토한 계획 적용
+### 18. (학교 Ubuntu · 일반 사용자) 검토한 계획 적용
 
 ```bash
 terraform apply cleanup.tfplan
@@ -476,7 +505,7 @@ terraform apply cleanup.tfplan
 
 `Apply complete!`와 변경 수가 표시됩니다. 출력 주소와 ID는 계정·실행마다 다릅니다.
 
-### 18. (학교 Ubuntu · 일반 사용자) 관리 자원이 남아 있지 않은지 확인
+### 19. (학교 Ubuntu · 일반 사용자) 관리 자원이 남아 있지 않은지 확인
 
 ```bash
 terraform state list
