@@ -4,7 +4,7 @@
 
 도구 설치는 처음 한 번, AWS 임시 인증은 매 수업 시작과 토큰 만료 시 수행합니다.
 
-![학교 Ubuntu VM에 공통 도구와 환경을 준비하고 Learner Lab 임시 인증으로 AWS 자원을 관리하는 구성](images/common-setup.png)
+![공통 준비 후 만들어지는 Terraform·AWS CLI 실행 파일, 환경·인증 파일, Provider 캐시 폴더와 실습 작업 폴더](images/common-preparation-results.png)
 
 ## 0. 학교 VM 접속
 
