@@ -4,6 +4,8 @@
 
 도구 설치는 처음 한 번, AWS 임시 인증은 매 수업 시작과 토큰 만료 시 수행합니다.
 
+![학교 Ubuntu VM에 공통 도구와 환경을 준비하고 Learner Lab 임시 인증으로 AWS 자원을 관리하는 구성](images/common-setup.png)
+
 ## 0. 학교 VM 접속
 
 PC 터미널에서 접속합니다. `studentNN`과 `vmNN`은 배정받은 값으로 바꿉니다.
@@ -18,21 +20,7 @@ ssh "studentNN:vmNN@gate.su-cloud.syu.ac.kr" -p 2222
 
 수업 환경은 Ubuntu 24.04, x86_64, Python 3.12입니다. 명령이 실패하면 해결한 뒤 진행합니다.
 
-### 01. 사용자와 CPU 확인
-
-```bash
-id -u
-```
-
-UID가 0이면 root 계정입니다. 일반 사용자로 다시 접속합니다.
-
-```bash
-uname -m
-```
-
-`x86_64`인지 확인합니다. 다른 값이면 교수자에게 확인합니다.
-
-### 02. 설치 도구 준비
+### 01. 설치 도구 준비
 
 ```bash
 sudo apt-get update
@@ -44,7 +32,7 @@ sudo apt-get install -y curl unzip python3-venv
 
 파일 다운로드·압축 해제와 AWS CLI용 Python 가상환경에 필요한 도구입니다.
 
-### 03. 폴더 준비
+### 02. 폴더 준비
 
 ```bash
 mkdir -p "$HOME/.local/share/cloud-infra-tools/bin" \
@@ -63,7 +51,7 @@ chmod 700 "$HOME/.config/cloud-infra" "$HOME/cloud-infra"
 cd "$HOME/.local/share/cloud-infra-tools"
 ```
 
-### 04. Terraform 다운로드와 검증
+### 03. Terraform 다운로드와 검증
 
 ```bash
 curl -fSLO https://releases.hashicorp.com/terraform/1.17.1/terraform_1.17.1_linux_amd64.zip
@@ -79,7 +67,7 @@ grep 'terraform_1.17.1_linux_amd64.zip$' terraform_1.17.1_SHA256SUMS | sha256sum
 
 `terraform_1.17.1_linux_amd64.zip: OK`가 나오면 진행합니다.
 
-### 05. Terraform과 AWS CLI 설치
+### 04. Terraform과 AWS CLI 설치
 
 ```bash
 unzip -oq terraform_1.17.1_linux_amd64.zip -d bin
@@ -95,7 +83,7 @@ venv/bin/python -m pip install 'awscli==1.46.2'
 
 AWS CLI는 사용자 가상환경에 설치합니다. `sudo pip`는 사용하지 않습니다.
 
-### 06. 환경 설정 저장
+### 05. 환경 설정 저장
 
 아래 블록을 마지막 `EOF`까지 한 번에 복사합니다.
 
@@ -114,7 +102,7 @@ EOF
 
 수업용 인증 파일과 `us-east-1` 리전을 사용합니다. 마지막 줄은 이전 인증 환경변수를 비웁니다. Provider 캐시는 다운로드를 줄이며, 같은 캐시를 쓰는 `terraform init`은 동시에 실행하지 않습니다.
 
-### 07. Git 제외 파일 저장
+### 06. Git 제외 파일 저장
 
 State·개인 키·접속 정보가 Git에 올라가지 않도록 설정합니다.
 
@@ -136,7 +124,7 @@ EOF
 
 `.terraform.lock.hcl`은 제외하지 않습니다. 이미 Git이 추적 중인 파일에는 제외 규칙이 소급 적용되지 않습니다.
 
-### 08. 설치 확인
+### 07. 설치 확인
 
 ```bash
 source "$HOME/.config/cloud-infra/env.sh"
@@ -156,7 +144,7 @@ Terraform `1.17.1`과 AWS CLI `1.46.2`를 확인합니다.
 
 Learner Lab에서 **Start Lab → Ready → AWS Details → AWS CLI → Show** 순서로 이동합니다. 세 항목의 `=` 오른쪽 값만 복사합니다.
 
-### 09. 임시 인증 저장
+### 08. 임시 인증 저장
 
 아래 블록 전체를 먼저 실행한 뒤, 질문에 맞춰 값을 하나씩 입력합니다. **입력값은 화면에 표시되지 않습니다.** Session Token도 끝까지 복사합니다.
 
@@ -180,7 +168,7 @@ unset ci_access ci_secret ci_token
 
 `임시 자격 증명 저장 완료`를 확인합니다. 인증 값은 과제 화면이나 Git에 포함하지 않습니다.
 
-### 10. 계정 확인
+### 09. 계정 확인
 
 ```bash
 aws sts get-caller-identity
