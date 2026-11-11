@@ -24,6 +24,18 @@
 
 검증 버전은 Ubuntu 24.04 x86_64 / Python 3.12, Terraform 1.17.1, AWS Provider 6.71.0, AWS CLI 1.46.2, Ansible Core 2.21.5입니다. AMI는 us-east-1의 Canonical Ubuntu 24.04 AMD64 `ami-0d6dd9e8265d48906`입니다.
 
+## 7주차 fmt·validate 실습 추가 검증 — 2026-11-12
+
+Windows의 별도 로컬 작업 폴더에서 개정 교안의 `providers.tf`와 `main.tf` 작성 블록을 추출하여 Terraform 1.17.1 / AWS Provider 6.71.0으로 검사했습니다.
+
+- 불규칙한 서식과 `aws_vpc.lab.iid` 오타가 있는 초기 코드에서 `init`이 성공했습니다.
+- `fmt -diff`가 두 파일의 서식을 수정하고 변경 내용을 출력했습니다. 속성 오타는 그대로 남았습니다.
+- 첫 번째 `validate`는 `Unsupported attribute`로 실패했고, `iid`가 문제임을 표시했습니다.
+- 교안의 `sed` 명령으로 `iid`를 `id`로 수정한 뒤 `fmt -check`와 `validate`가 모두 성공했습니다.
+- 수정·정리된 두 파일은 줄바꿈 차이를 제외하면 기존 교안의 정상 코드와 정확히 일치했습니다. 08단계의 Lesson 태그 변경 명령도 정상 작동했습니다.
+
+이번 검증에서는 AWS 자원을 생성·변경하지 않았으며, `plan`·`apply`·`destroy`를 재실행하지 않았습니다. 위 표의 AWS 실행 결과는 기존 검증 기록입니다.
+
 ## Ansible 반복 실행 결과
 
 | 실행 | web1 changed | web2 changed | unreachable / failed |

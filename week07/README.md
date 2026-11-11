@@ -8,7 +8,7 @@
 
 ## 학습 목표
 
-Provider와 Resource를 구분하고, 계획을 읽은 뒤 적용하며, 태그 변경이 VPC 교체 없이 이루어지는지 확인합니다. 140분 수업: 이론 50분 · 실습 75분 · 정리 15분. 도구 설치는 수업 전에 완료합니다.
+Provider와 Resource를 구분하고, `fmt`로 서식을 정리한 뒤 `validate`로 구성 오류를 찾아 수정합니다. 계획을 읽은 뒤 적용하며, 태그 변경이 VPC 교체 없이 이루어지는지 확인합니다. 140분 수업: 이론 50분 · 실습 75분 · 정리 15분. 도구 설치는 수업 전에 완료합니다.
 
 ## 실습 준비와 설정값
 
@@ -48,25 +48,27 @@ pwd
 
 ### 02. (학교 Ubuntu · 일반 사용자) providers.tf 작성
 
+아래 코드는 `fmt`의 효과를 확인하도록 들여쓰기와 등호 주변 공백을 일부러 불규칙하게 작성했습니다. **지금은 직접 정렬하지 말고 그대로 복사합니다.**
+
 ```bash
 cat > providers.tf <<'EOF'
 terraform {
-  required_version = "= 1.17.1"
+required_version="= 1.17.1"
   required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "= 6.71.0"
-    }
+ aws = {
+      source="hashicorp/aws"
+   version     = "= 6.71.0"
+ }
   }
 }
 
 provider "aws" {
-  region = "us-east-1"
+region     = "us-east-1"
   default_tags {
-    tags = {
-      Course = "cloud-infra"
-      Week   = "07"
-    }
+ tags = {
+      Course="cloud-infra"
+ Week = "07"
+ }
   }
 }
 EOF
@@ -82,18 +84,20 @@ Terraform과 AWS Provider의 검증 버전을 고정합니다. Provider는 Terra
 
 ### 03. (학교 Ubuntu · 일반 사용자) main.tf 작성
 
+이 파일도 서식이 불규칙하며, 마지막 output에는 검증 실습을 위한 **속성 이름 오타 `iid`**가 하나 있습니다. 04단계에서 오류를 확인한 뒤 수정하므로 지금은 그대로 작성합니다.
+
 ```bash
 cat > main.tf <<'EOF'
 resource "aws_vpc" "lab" {
-  cidr_block = "10.70.0.0/16"
-  tags = {
-    Name   = "cloud-infra-week07"
-    Lesson = "first"
-  }
+cidr_block="10.70.0.0/16"
+    tags = {
+ Name="cloud-infra-week07"
+      Lesson     = "first"
+    }
 }
 
 output "vpc_id" {
-  value = aws_vpc.lab.id
+value=aws_vpc.lab.iid
 }
 EOF
 ```
@@ -102,23 +106,96 @@ EOF
 
 - `resource "aws_vpc" "lab"`에서 `aws_vpc`는 자원 종류, `lab`은 코드 안의 이름입니다.
 - `cidr_block`은 VPC 주소 범위입니다. 이번에는 인터넷 연결이나 서버를 만들지 않습니다.
-- `aws_vpc.lab.id`는 생성 결과를 참조합니다. `output`은 그 값을 사용자에게 보여 줍니다.
+- `output`은 생성 결과를 사용자에게 보여 줍니다. 올바른 참조는 `aws_vpc.lab.id`이지만, 지금은 일부러 `aws_vpc.lab.iid`로 작성했습니다.
 - AWS 태그 Name과 Terraform 주소 `aws_vpc.lab`은 서로 다른 이름입니다.
 
 **확인할 결과**
 
 성공하면 별도 출력이 없습니다. `cat main.tf`로 작성한 내용을 읽을 수 있습니다. 코드 블록은 첫 `cat`부터 마지막 `EOF`까지 전체를 복사합니다.
 
-### 04. (학교 Ubuntu · 일반 사용자) 초기화·형식 정리·문법 확인
+### 04. (학교 Ubuntu · 일반 사용자) 초기화·서식 정리·구성 오류 수정
 
-아래 명령어를 하나씩 실행하고, 각 명령이 성공하면 다음 명령으로 진행합니다.
+아래 명령어를 하나씩 실행하며 결과를 확인합니다. **04-3의 첫 번째 `validate` 실패는 의도된 결과입니다.** 오류를 수정하고 04-4에서 검증에 성공한 뒤에만 05단계로 진행합니다. 이 과정에 약 5~8분을 사용합니다.
+
+#### 04-1. 초기화
 
 ```bash
 terraform init
 ```
 
+**명령어 풀이**
+
+`init`은 Provider와 모듈을 준비하고 `.terraform.lock.hcl`에 Provider 선택을 기록합니다. 초기화 성공이 구성 전체의 검증 성공을 뜻하지는 않습니다.
+
+**확인할 결과**
+
+`Terraform has been successfully initialized!`가 표시됩니다.
+
+#### 04-2. 서식 정리 전후 비교
+
+먼저 초기 코드를 읽고 들여쓰기와 등호 주변 공백을 확인합니다.
+
 ```bash
-terraform fmt -recursive
+cat providers.tf
+cat main.tf
+```
+
+```bash
+terraform fmt -diff
+```
+
+```bash
+cat providers.tf
+cat main.tf
+```
+
+**명령어 풀이**
+
+- `fmt -diff`는 파일의 서식을 실제로 수정하면서 변경 전후 차이도 출력합니다. 차이에서 `-` 줄은 수정 전, `+` 줄은 수정 후입니다.
+- 들여쓰기와 등호 정렬은 바뀌지만, VPC 주소 범위와 태그 값은 바뀌지 않습니다.
+- `fmt`는 속성 이름 오타를 고치지 않습니다. 마지막 output의 `aws_vpc.lab.iid`가 그대로 남아 있는지 확인합니다.
+
+**확인할 결과**
+
+`providers.tf`와 `main.tf`의 변경 내용이 출력되고, 파일을 다시 읽으면 서식이 정리되어 있습니다.
+
+#### 04-3. 구성 검증 실패 확인
+
+```bash
+terraform validate
+```
+
+**명령어 풀이**
+
+- `validate`는 구성의 문법과 내부 일관성, 속성 이름과 참조 등을 확인합니다. AWS 생성 권한까지 확인하지는 않습니다.
+- 이번 오류는 중괄호나 따옴표 누락이 아니라, 존재하지 않는 속성 `iid`를 참조한 **구성 오류**입니다.
+- 오류 메시지에서 파일명, 줄 번호, 문제가 된 표현식을 읽습니다. `fmt`가 성공해도 구성 오류는 남아 있을 수 있습니다.
+
+**확인할 결과**
+
+다음과 같은 오류가 표시됩니다. 줄 번호와 출력 모양은 달라질 수 있습니다.
+
+```text
+Error: Unsupported attribute
+...
+  value = aws_vpc.lab.iid
+...
+This object has no argument, nested block, or exported attribute named "iid".
+```
+
+**이 실패는 실습에 포함된 정상적인 과정입니다.** 아직 `plan`이나 `apply`를 실행하지 말고 다음 단계에서 수정합니다.
+
+#### 04-4. 오타 수정 후 재검증
+
+아래 명령으로 `aws_vpc.lab.iid`를 `aws_vpc.lab.id`로 수정합니다.
+
+```bash
+sed -i 's/aws_vpc\.lab\.iid/aws_vpc.lab.id/' main.tf
+cat main.tf
+```
+
+```bash
+terraform fmt -check
 ```
 
 ```bash
@@ -127,12 +204,13 @@ terraform validate
 
 **명령어 풀이**
 
-- `init`은 Provider와 모듈을 준비하고 `.terraform.lock.hcl`에 Provider 선택을 기록합니다.
-- `fmt`는 들여쓰기를 정리합니다. `validate`는 구성의 문법과 참조를 확인하지만 AWS 생성 권한까지 확인하지는 않습니다.
+- `sed -i`는 파일 안의 지정한 문자열을 수정합니다.
+- `fmt -check`는 파일을 수정하지 않고 서식이 정리되어 있는지 검사합니다.
+- 속성 이름을 바로잡았으므로 다시 실행한 `validate`는 성공해야 합니다.
 
 **확인할 결과**
 
-`Success! The configuration is valid.`가 표시됩니다.
+output의 참조가 `value = aws_vpc.lab.id`로 바뀌어 있습니다. `fmt -check`는 아무 출력 없이 성공하고, `validate`에는 `Success! The configuration is valid.`가 표시됩니다. 이 성공을 확인한 뒤 05단계로 진행합니다.
 
 ### 05. (학교 Ubuntu · 일반 사용자) 처음 생성할 자원의 계획 확인
 
@@ -309,6 +387,8 @@ terraform state list
 
 ## 제출 및 확인 질문
 
+- `fmt -diff`에서 확인한 서식 변경과 `validate`의 수정 전 오류·수정 후 성공 결과를 제출합니다.
+- “`fmt`가 성공했는데 `validate`는 왜 실패했는가?”를 두 명령의 역할 차이와 연결해 설명합니다.
 - 생성·태그 변경·변경 없음·삭제에서 각각의 계획 요약을 제출합니다.
 - `providers.tf`, `main.tf`, `.terraform.lock.hcl`의 역할을 한 문장씩 설명합니다.
 - 태그 변경 전후 VPC ID가 같은 이유와 State 파일을 먼저 지우면 안 되는 이유를 설명합니다.
@@ -319,6 +399,8 @@ terraform state list
 
 | 증상 | 해결 |
 | --- | --- |
+| 첫 번째 validate에서 iid 관련 Unsupported attribute가 나옴 | 의도된 오류입니다. 04-4에서 iid를 id로 수정하고 검증 성공 후 진행 |
+| 오타 수정 후에도 validate가 실패함 | 오류에 표시된 파일과 줄 번호를 확인하고, output이 aws_vpc.lab.id인지 점검 |
 | VPC 생성 대신 변경이 나옴 | 이번 폴더에서 이전에 생성한 VPC가 남았는지 State 확인 |
 | 태그 변경 계획이 없음 | main.tf의 Lesson 값과 현재 작업 폴더 확인 |
 | VPC 삭제 시 DependencyViolation | 직접 추가한 서브넷·인터넷 게이트웨이가 있는지 확인. 소유가 확인되지 않은 다른 자원은 삭제하지 않고 교수자에게 문의 |
