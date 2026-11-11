@@ -57,6 +57,25 @@ pwd
 
 ### 02. (학교 Ubuntu · 일반 사용자) EC2 접속용 키 준비
 
+여기서 준비하는 것은 **학교 Ubuntu에서 EC2의 `ubuntu` 계정으로 SSH 접속할 때 사용할 Ed25519 키 한 쌍**입니다.
+
+```mermaid
+flowchart LR
+  subgraph SCHOOL["학교 Ubuntu · ssh-keygen으로 키 한 쌍 생성"]
+    PUB["공개 키<br/>~/.ssh/cloud-infra-lab.pub"]
+    PRIV["개인 키<br/>~/.ssh/cloud-infra-lab<br/>학교 VM에 보관"]
+  end
+  PUB -->|"Terraform으로 공개 키만 등록"| KEYPAIR["AWS Key Pair<br/>공개 키 등록"]
+  KEYPAIR -->|"EC2 생성 시 공개 키 설정"| EC2["EC2 · ubuntu 계정<br/>공개 키로 SSH 인증 확인"]
+  PRIV -.->|"개인 키를 로컬에서 사용해 SSH 인증"| EC2
+  classDef publicKey fill:#eaf2ff,stroke:#2563eb,color:#172b4d;
+  classDef privateKey fill:#fff4e5,stroke:#c87500,color:#172b4d;
+  class PUB publicKey;
+  class PRIV privateKey;
+```
+
+**개인 키 파일은 EC2로 전송하지 않습니다.** 이 단계에서는 키 파일을 준비하고, 공개 키 등록과 EC2 생성은 12단계의 `terraform apply`, SSH 접속은 14단계에서 진행합니다.
+
 ```bash
 mkdir -p "$HOME/.ssh"
 chmod 700 "$HOME/.ssh"
