@@ -24,7 +24,7 @@
 
 - 도구 설치는 첫 수업 전에 끝내고, 매 수업 시작에는 Lab Ready 상태와 새 임시 인증을 확인합니다.
 - 매주 AWS 자원은 삭제하고 코드·State는 보관합니다. Lab Reset이나 State 삭제로 `terraform destroy`를 대신하지 않습니다.
-- **count와 for_each 기본 비교는 9주차 A·B부 필수 실습**입니다. 기존 자원의 State 주소 이전은 선택 심화 설계안으로 구분합니다.
+- **9주차는 count → 드리프트 복구 → VPC만 유지하며 for_each 서브넷으로 재구성**합니다. 같은 폴더와 State에서 기존 EC2·서브넷·부속 자원을 삭제하고 새 서브넷을 만듭니다. Map과 개별 output을 사용하고 마지막에 VPC까지 정리합니다.
 - 검증 환경은 Ubuntu 24.04 x86_64, Terraform 1.17.1, AWS Provider 6.71.0, AWS CLI 1.46.2, Ansible Core 2.21.5, us-east-1입니다. 사용 버전과 AMI는 후속 수업 전에 다시 확인합니다.
 
 [검증 리포트](VERIFICATION.md)에서 실제 실행 결과와 미검증 범위를 확인할 수 있습니다.
@@ -33,7 +33,6 @@
 
 | 교안 | 실행 시점 | 추가 확인 |
 | --- | --- | --- |
-| [count→for_each State 이전](extension-state-migration/README.md) | 9주차 A·B부 완료 후 | 교수자용 설계안: moved 블록, AWS 실행 미검증 |
 | [Handler와 check/diff](extension-handlers/README.md) | 11주차 26번 후, 정리 전 | 설정 변경 시 reload, 재실행 변경 없음 |
 | [내부 ALB](extension-alb/README.md) | 11주차 26번 후, 정리 전 | 두 대상 healthy, EC2에서 내부 HTTP |
 | [ASG](extension-asg/README.md) | 11주차 26번 후, 정리 전 | 실제 InService 1대→그룹 인스턴스 0대 |
