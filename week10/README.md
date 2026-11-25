@@ -767,8 +767,15 @@ python3 - <<'PY'
 import json
 dev = json.load(open("../dev/dev-before.json"))
 test = json.load(open("test-before.json"))
-assert dev["vpc_id"]["value"] != test["vpc_id"]["value"]
-assert dev["instance_ids"]["value"] != test["instance_ids"]["value"]
+for key in ("vpc_id", "instance_ids"):
+    dev_value = dev[key]["value"]
+    test_value = test[key]["value"]
+    print(f"\n[{key}]")
+    print("  dev :", json.dumps(dev_value, ensure_ascii=False))
+    print("  test:", json.dumps(test_value, ensure_ascii=False))
+    print("  비교:", "서로 다름" if dev_value != test_value else "같음")
+assert dev["vpc_id"]["value"] != test["vpc_id"]["value"], "dev/test VPC ID가 같습니다."
+assert dev["instance_ids"]["value"] != test["instance_ids"]["value"], "dev/test EC2 ID 목록이 같습니다."
 print("dev/test의 VPC와 EC2가 서로 다름")
 PY
 ```
@@ -779,7 +786,7 @@ PY
 
 **확인할 결과**
 
-`dev/test의 VPC와 EC2가 서로 다름`이 표시됩니다. 오류가 나면 다음 단계로 넘어가지 말고 두 폴더의 출력과 State를 확인합니다.
+`vpc_id`와 `instance_ids`별로 dev/test의 실제 값과 `서로 다름`이 표시된 뒤, `dev/test의 VPC와 EC2가 서로 다름`이 표시됩니다. 오류가 나면 다음 단계로 넘어가지 말고 두 폴더의 출력과 State를 확인합니다.
 
 ### 28. (학교 Ubuntu · 일반 사용자) dev의 태그 입력만 변경
 
@@ -944,7 +951,16 @@ aws ec2 describe-instances --instance-ids "$ci_test_id" --query 'Reservations[0]
 terraform output -json > test-after.json
 python3 - <<'PY'
 import json
-assert json.load(open("test-before.json")) == json.load(open("test-after.json"))
+before = json.load(open("test-before.json"))
+after = json.load(open("test-after.json"))
+for key in sorted(set(before) | set(after)):
+    before_value = before.get(key, {}).get("value")
+    after_value = after.get(key, {}).get("value")
+    print(f"\n[{key}]")
+    print("  dev 삭제 전:", json.dumps(before_value, ensure_ascii=False))
+    print("  dev 삭제 후:", json.dumps(after_value, ensure_ascii=False))
+    print("  비교:", "유지됨" if key in before and key in after and before_value == after_value else "달라짐")
+assert before == after, "test 출력이 달라졌습니다. 위의 변경 전후 값을 확인하세요."
 print("test 출력 ID와 주소 유지 확인")
 PY
 ```
@@ -955,7 +971,7 @@ State의 ID 비교에 더해 AWS API로 test EC2가 실제 running인지 확인�
 
 **확인할 결과**
 
-현재 경로는 test이고 AWS 조회에서 EC2의 `State`가 `running`입니다. 이어 `test 출력 ID와 주소 유지 확인`이 표시됩니다.
+현재 경로는 test이고 AWS 조회에서 EC2의 `State`가 `running`입니다. 이어 VPC·서브넷·EC2 ID와 공인 IP 등 각 출력 항목의 dev 삭제 전후 실제 값과 `유지됨`이 표시되고, 마지막에 `test 출력 ID와 주소 유지 확인`이 표시됩니다.
 
 ### 38. (학교 Ubuntu · 일반 사용자) 다시 실행해 변경 없음 확인
 
