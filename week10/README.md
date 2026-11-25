@@ -20,13 +20,7 @@
 
 검증 안내: 2026-11-26 학교 Ubuntu와 실제 Learner Lab에서 01~41번의 생성·변경·환경 분리·삭제를 실행했습니다. 결과와 검증 범위는 [검증 리포트](../VERIFICATION.md)에 기록합니다. 그림은 예상 동작을 설명하며 각자의 계정에서도 단계별 결과를 직접 확인합니다.
 
-```text
-week10/
-├── modules/web_environment/  ← 재사용할 코드만 보관
-└── environments/
-    ├── dev/                 ← Terraform 실행 위치와 dev State
-    └── test/                ← Terraform 실행 위치와 test State
-```
+![week10 폴더 구조: modules/web_environment에는 재사용할 공통 코드를 보관하고, environments/dev와 environments/test에서 각각 Terraform을 실행하며 환경별 State를 따로 관리합니다.](assets/week10-directory-structure.png)
 
 `.tfvars` 파일만 바꿔 같은 폴더에서 실행하면 독립된 State가 생기지 않습니다. 이번에는 루트 디렉터리 자체를 분리합니다. 같은 모듈을 수정하면 두 환경의 다음 plan에 영향을 줄 수 있다는 점도 기억합니다.
 
