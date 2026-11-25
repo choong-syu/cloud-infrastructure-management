@@ -728,22 +728,6 @@ terraform validate
 
 `Success! The configuration is valid.`가 표시됩니다.
 
-test에서도 다음 명령을 하나씩 실행하여 요구사항과 선택 버전을 확인합니다.
-
-```bash
-terraform providers
-```
-
-```bash
-terraform version
-```
-
-```bash
-cat .terraform.lock.hcl
-```
-
-test 역시 root와 child의 교집합인 `>= 6.71.0, < 6.72.0`을 만족하는 AWS Provider 하나를 사용합니다. dev와 test는 별도 루트이므로 lock 파일도 각각 생성됩니다. 같은 시점에 기존 선택 없이 초기화하면 보통 같은 버전이 선택되지만, 초기화 시점이나 기존 lock 파일이 다르면 정확한 버전까지 항상 같다고 보장할 수는 없습니다.
-
 ### 25. (학교 Ubuntu · 일반 사용자) 처음 생성할 자원의 계획 확인
 
 ```bash
