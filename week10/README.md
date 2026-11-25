@@ -18,7 +18,7 @@
 
 흐름: **준비 → 공통 모듈 작성 → dev 생성 → test 생성 → dev 태그 변경·test 변경 없음 확인 → dev 삭제·test 유지 확인 → test 정리**.
 
-검증 안내: 2026-11-26 학교 Ubuntu와 실제 Learner Lab에서 01~41번의 생성·변경·환경 분리·삭제를 실행했습니다. 결과와 검증 범위는 [검증 리포트](../VERIFICATION.md)에 기록합니다. 그림은 예상 동작을 설명하며 각자의 계정에서도 단계별 결과를 직접 확인합니다.
+검증 안내: 2026-11-26 학교 Ubuntu와 실제 Learner Lab에서 01~41번의 생성·변경·환경 분리·삭제를 실행했습니다. 이후 추가한 Provider 버전 범위·선택 결과 확인 단계는 실제 Lab에서 재실행하지 않았습니다. 결과와 검증 범위는 [검증 리포트](../VERIFICATION.md)에 기록합니다. 그림은 예상 동작을 설명하며 각자의 계정에서도 단계별 결과를 직접 확인합니다.
 
 ![week10 폴더 구조: modules/web_environment에는 재사용할 공통 코드를 보관하고, environments/dev와 environments/test에서 각각 Terraform을 실행하며 환경별 State를 따로 관리합니다.](assets/week10-directory-structure.png)
 
@@ -128,7 +128,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "= 6.71.0"
+      version = ">= 6.71.0"
     }
   }
 }
@@ -137,7 +137,7 @@ EOF
 
 **명령어 풀이**
 
-자식 모듈이 필요로 하는 Provider를 선언합니다. 리전·인증 설정은 루트의 provider 블록을 상속합니다.
+자식(child) 모듈이 자신의 Provider 요구사항을 선언합니다. 여기서는 `hashicorp/aws`의 최소 버전을 `6.71.0`으로 지정합니다. 리전·인증 같은 Provider 설정은 루트의 `provider` 블록을 상속하지만, Provider 요구사항은 각 모듈이 직접 선언합니다.
 
 **확인할 결과**
 
@@ -354,7 +354,7 @@ terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
-      version = "= 6.71.0"
+      version = ">= 6.70.0, < 6.72.0"
     }
   }
 }
@@ -373,7 +373,15 @@ EOF
 
 **명령어 풀이**
 
-루트에서 실제 Provider 리전과 공통 태그를 설정합니다.
+루트(root) 모듈도 자신의 Provider 요구사항을 선언하고, 실제 Provider 리전과 공통 태그를 설정합니다. 최소 버전을 child와 다르게 두어 초기화 시 두 요구사항이 함께 적용되는지 관찰합니다.
+
+| 선언 위치 | AWS Provider 요구사항 |
+| --- | --- |
+| root: `environments/dev/providers.tf` | `>= 6.70.0, < 6.72.0` |
+| child: `modules/web_environment/versions.tf` | `>= 6.71.0` |
+| 두 요구사항의 교집합 | `>= 6.71.0, < 6.72.0` |
+
+**한 루트 구성에서는 모든 모듈의 요구사항을 만족하는 AWS Provider 버전 하나를 선택합니다.** root용과 child용 버전을 따로 설치하는 것이 아니며, root의 조건이 child의 조건을 덮어쓰지도 않습니다. 이 예시에서 `6.70.x`는 child의 요구사항 때문에, `6.72.0` 이상은 root의 상한 때문에 선택할 수 없습니다. 18번에서 선택 결과를 확인합니다. [모듈의 Provider 요구사항](https://developer.hashicorp.com/terraform/language/modules/develop/providers)
 
 **확인할 결과**
 
@@ -598,6 +606,33 @@ terraform validate
 
 `Success! The configuration is valid.`가 표시됩니다.
 
+### Provider 요구사항과 선택 버전 확인
+
+같은 dev 폴더에서 다음 명령을 실행합니다.
+
+```bash
+terraform providers
+```
+
+`Providers required by configuration` 아래에서 root와 `module.web_environment`의 요구사항을 확인합니다. 모듈 이름은 앞의 `module` 블록 이름을 따릅니다. 이 명령은 **요구사항**을 보여주므로 설치된 정확한 버전은 다음 명령으로 확인합니다.
+
+```bash
+terraform version
+```
+
+```bash
+cat .terraform.lock.hcl
+```
+
+- `terraform version`의 `provider registry.terraform.io/hashicorp/aws v...`는 선택된 버전입니다.
+- lock 파일의 AWS Provider 블록에서 `version`은 정확한 선택 버전, `constraints`는 초기화 때 반영된 버전 조건입니다.
+- 선택된 버전이 `6.71.0` 이상이면서 `6.72.0` 미만인지 확인합니다. 예를 들어 `6.71.0`이 선택되었다면 root와 child의 요구사항을 모두 만족합니다. 정확한 패치 버전은 실행 시점과 기존 lock 파일에 따라 달라질 수 있습니다.
+- 해당 Provider의 기존 선택이 없으면 범위를 만족하는 최신 버전을 선택합니다. 기존 lock 파일에 호환되는 선택이 있으면 일반 `terraform init`은 그 버전을 재사용합니다.
+
+기존 선택을 무시하고 현재 조건 안에서 최신 버전을 다시 선택하려는 경우에만, **plan을 만들기 전에** `terraform init -upgrade`를 실행합니다. lock 파일을 직접 편집하거나 삭제할 필요는 없습니다. [Dependency lock 파일](https://developer.hashicorp.com/terraform/language/files/dependency-lock)
+
+**관찰 질문:** root는 `6.70.0`을 허용하는데 왜 `6.70.x`는 선택되지 않나요? child는 상한이 없는데 왜 `6.72.0` 이상은 선택되지 않나요?
+
 ### 19. (학교 Ubuntu · 일반 사용자) 처음 생성할 자원의 계획 확인
 
 ```bash
@@ -699,6 +734,16 @@ terraform validate
 **확인할 결과**
 
 `Success! The configuration is valid.`가 표시됩니다.
+
+test에서도 요구사항과 선택 버전을 확인합니다.
+
+```bash
+terraform providers
+terraform version
+cat .terraform.lock.hcl
+```
+
+test 역시 root와 child의 교집합인 `>= 6.71.0, < 6.72.0`을 만족하는 AWS Provider 하나를 사용합니다. dev와 test는 별도 루트이므로 lock 파일도 각각 생성됩니다. 같은 시점에 기존 선택 없이 초기화하면 보통 같은 버전이 선택되지만, 초기화 시점이나 기존 lock 파일이 다르면 정확한 버전까지 항상 같다고 보장할 수는 없습니다.
 
 ### 25. (학교 Ubuntu · 일반 사용자) 처음 생성할 자원의 계획 확인
 
