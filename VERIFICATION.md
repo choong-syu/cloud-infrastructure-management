@@ -15,7 +15,7 @@
 | 8주차 | 네트워크·EC2 생성, 상태 검사, SSH ubuntu 로그인, cloud-init 완료, 삭제 | AWS 실행 통과 |
 | 9주차 count·드리프트 (기존 구성) | 두 AZ의 서브넷, EC2 1→2→1, 첫 서버 ID 유지, 외부 태그 변경 복구, 삭제 | AWS 실행 통과 |
 | 이전 9주차 별도 for_each 구성 | for_each의 blue/green ID 유지, amber만 추가, 전체 삭제 | AWS 실행 통과 |
-| 10주차 | dev/test 별도 State와 자원, dev 변경·삭제 후 test 유지, 두 환경 정리 | AWS 실행 통과 |
+| 10주차 | dev/test 별도 State와 자원, dev 변경·삭제 후 test 유지, 두 환경 정리 | AWS 재실행 통과 (2026-11-26) |
 | 11주차 | 두 서버 nginx·HTTP, 멱등성, 파일 드리프트 복구, 전체 삭제 | AWS 실행 통과 |
 | Handler·check/diff | 설정 변경 시 reload, 실제 /health 응답, 재실행 변경 없음 | 실행 통과 |
 | 내부 ALB | 두 대상 healthy, EC2에서 내부 ALB 경유 HTTP, 확장 자원 삭제 | AWS 실행 통과 |
@@ -61,7 +61,18 @@ Windows의 별도 로컬 작업 폴더에서 개정 교안의 `providers.tf`와 
 - 이미지 생성 도구로 전체 개요, 모듈·루트·State 관계, dev 입력 변경, 순차 정리 그림 4장을 제작했습니다. 단계 범위·폴더명·CIDR·EC2 수·생성 및 삭제 수를 교안과 대조했습니다. 그림은 예상 동작을 설명하는 자료입니다.
 - Windows의 별도 로컬 폴더에서 교안 03~15번 Bash 명령을 순서대로 실행해 모듈과 dev/test 파일을 작성했습니다. Terraform 1.17.1 / AWS Provider 6.71.0에서 두 루트의 `init -backend=false`, `fmt`, `validate`가 모두 통과했습니다. 모듈 파일의 서식도 별도로 확인했습니다.
 - 41개 Bash 블록의 구문, 연속 단계 번호, 단계별 풀이·확인 결과, 상대 파일 링크와 공통 준비 앵커를 점검했습니다. 17·23번 JSON 작성 코드는 검사용 주소 `192.0.2.1`을 넣어 각 루트에 `ssh_cidr`가 `192.0.2.1/32`로 저장됨을 확인했습니다. 이는 실제 학교 출구 IP 조회 검증이 아닙니다.
-- **이번 개정에서는 AWS 인증·plan·apply·삭제를 재실행하지 않았습니다.** 위 표의 10주차 AWS 실행 결과는 2026-11-03 기록이며, 이번 로컬 검증은 현재 Learner Lab 권한·AMI 가용성·실제 생성 및 삭제를 보장하지 않습니다.
+- 양식 개정 직후에는 로컬 검증만 수행했습니다. 이후 같은 날 아래와 같이 학교 VM과 실제 AWS에서 전체 절차를 다시 실행했습니다. 로컬 검증과 AWS 실행 결과는 구분합니다.
+
+### 10주차 학교 VM·AWS 전체 재검증 — 2026-11-26
+
+- 학교 Ubuntu 24.04.4 LTS의 student43 환경에서 게시 교안의 01~41번을 순서대로 실행했습니다. Terraform 1.17.1, AWS Provider 6.71.0, AWS CLI 1.46.2를 사용했습니다. 만료된 인증을 갱신한 뒤 STS 인증, 지정 AMI의 available 상태, LabInstanceProfile을 확인했습니다.
+- dev와 test의 최초 계획은 각각 `12 to add, 0 to change, 0 to destroy`였으며 실제 적용도 각각 12개 생성으로 완료됐습니다. 두 VPC·EC2 ID와 State lineage가 서로 다름을 확인했습니다.
+- dev의 Lesson 입력을 변경한 계획은 `0 to add, 1 to change, 0 to destroy`였습니다. 적용 후 dev VPC ID가 유지됐고 test의 계획은 `No changes`였습니다.
+- dev의 12개 자원을 먼저 삭제했습니다. 이후 AWS API에서 test EC2의 running 상태를 확인했고, test의 출력 ID·주소가 이전과 같았으며 다시 `No changes`였습니다.
+- test도 12개 자원을 삭제했고 두 환경의 `terraform state list`는 빈 결과였습니다. 별도 AWS 조회로 생성했던 VPC·서브넷·SG·Route Table·IGW·키 페어·EBS·ENI가 제거됐고 EC2는 terminated 상태임을 확인했습니다.
+- 최종 us-east-1 조회에서 기본 VPC 외 VPC 0개, 활성 EC2 0개, EBS 0개, ENI 0개였습니다. 기존 기본 VPC와 `vockey`는 보존했습니다. 종료된 EC2 기록은 콘솔에 잠시 표시될 수 있습니다.
+- 재실습을 위해 student43의 테스트용 week10 폴더를 제거했습니다. student44·45도 접속해 week10 폴더가 없음을 확인했습니다. student44에는 없던 공통 도구·환경 설정을 준비했고, student43·45의 공통 도구와 기존 키는 보존했습니다. 테스트에 사용한 새 인증은 student43에서 제거하고 기존 인증 파일을 복원했습니다. 세 환경 모두 공통 08번 인증 저장·09번 계정 확인 후 10주차 01번부터 시작할 수 있습니다.
+- 이 결과는 제공된 Learner Lab 계정에서의 실행 검증입니다. student44·45에서는 별도 AWS 자원을 생성하지 않았으며, 학생별 AWS 계정 권한·예산·동시 실습 부하는 이번 검증 범위에 포함하지 않습니다.
 
 ## Ansible 반복 실행 결과
 
