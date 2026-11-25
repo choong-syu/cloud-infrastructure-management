@@ -788,6 +788,143 @@ PY
 
 `vpc_id`와 `instance_ids`별로 dev/test의 실제 값과 `서로 다름`이 표시된 뒤, `dev/test의 VPC와 EC2가 서로 다름`이 표시됩니다. 오류가 나면 다음 단계로 넘어가지 말고 두 폴더의 출력과 State를 확인합니다.
 
+### 27-1. (학교 Ubuntu · 일반 사용자) AWS CLI로 dev/test 전체 구성 확인
+
+두 환경을 모두 배포한 지금, Terraform 출력뿐 아니라 **AWS에 실제로 존재하는 자원과 연결 관계**를 조회합니다. 아래 블록을 하나씩 실행합니다. 조회 범위는 이번 실습의 dev/test VPC와 그 안의 자원입니다. 모든 명령은 조회만 수행합니다.
+
+**① 조회할 dev/test VPC 확인**
+
+```bash
+ci_dev_vpc=$(terraform -chdir="$HOME/cloud-infra/week10/environments/dev" output -raw vpc_id)
+ci_test_vpc=$(terraform -chdir="$HOME/cloud-infra/week10/environments/test" output -raw vpc_id)
+printf 'dev VPC : %s\ntest VPC: %s\n' "$ci_dev_vpc" "$ci_test_vpc"
+```
+
+두 VPC ID가 정상적으로 표시된 뒤 진행합니다. 아래의 `--filters`는 두 VPC에 속한 자원을 함께 조회하고, `--query`는 확인할 항목을 추립니다. `Name` 태그의 `-dev`와 `-test`, 그리고 VPC ID로 환경을 구분합니다.
+
+```bash
+aws ec2 describe-vpcs --region us-east-1 --no-cli-pager \
+  --vpc-ids "$ci_dev_vpc" "$ci_test_vpc" \
+  --query 'Vpcs[].{Name:Tags[?Key==`Name`]|[0].Value,VPC:VpcId,CIDR:CidrBlock,State:State}' \
+  --output table
+```
+
+dev의 `10.80.0.0/16`과 test의 `10.90.0.0/16`을 비교합니다.
+
+**② 서브넷과 가용 영역 확인**
+
+```bash
+aws ec2 describe-subnets --region us-east-1 --no-cli-pager \
+  --filters "Name=vpc-id,Values=$ci_dev_vpc,$ci_test_vpc" \
+  --query 'Subnets[].{Name:Tags[?Key==`Name`]|[0].Value,VPC:VpcId,Subnet:SubnetId,CIDR:CidrBlock,AZ:AvailabilityZone,PublicIP:MapPublicIpOnLaunch}' \
+  --output table
+```
+
+각 VPC에 서브넷 2개씩, 총 4개가 보입니다. 환경마다 `us-east-1a`와 `us-east-1b`에 하나씩 배치되었는지 확인합니다.
+
+**③ 인터넷 게이트웨이와 VPC 연결 확인**
+
+```bash
+aws ec2 describe-internet-gateways --region us-east-1 --no-cli-pager \
+  --filters "Name=attachment.vpc-id,Values=$ci_dev_vpc,$ci_test_vpc" \
+  --query 'InternetGateways[].{Name:Tags[?Key==`Name`]|[0].Value,IGW:InternetGatewayId,Attachments:Attachments}' \
+  --output json
+```
+
+인터넷 게이트웨이 2개가 각각 어느 VPC에 연결되어 있는지 확인합니다.
+
+**④ 라우팅 테이블·서브넷 연결·인터넷 경로 확인**
+
+```bash
+aws ec2 describe-route-tables --region us-east-1 --no-cli-pager \
+  --filters "Name=vpc-id,Values=$ci_dev_vpc,$ci_test_vpc" \
+  --query 'RouteTables[].{Name:Tags[?Key==`Name`]|[0].Value,VPC:VpcId,RouteTable:RouteTableId,Associations:Associations,Routes:Routes}' \
+  --output json
+```
+
+`Name`이 `-public`으로 끝나는 테이블에서 두 서브넷의 `SubnetId`와 `0.0.0.0/0` 경로의 `GatewayId`를 찾습니다. 앞서 조회한 서브넷·인터넷 게이트웨이 ID와 연결되는지 비교합니다. VPC 생성 시 AWS가 자동으로 만드는 기본(main) 라우팅 테이블도 함께 표시됩니다.
+
+**⑤ 보안 그룹과 인바운드·아웃바운드 규칙 확인**
+
+```bash
+aws ec2 describe-security-groups --region us-east-1 --no-cli-pager \
+  --filters "Name=vpc-id,Values=$ci_dev_vpc,$ci_test_vpc" \
+  --query 'SecurityGroups[].{Name:Tags[?Key==`Name`]|[0].Value,VPC:VpcId,Group:GroupId,GroupName:GroupName,Inbound:IpPermissions,Outbound:IpPermissionsEgress}' \
+  --output json
+```
+
+실습 보안 그룹의 SSH TCP 22 허용 주소가 학교 VM의 출구 IP `/32`인지 확인합니다. 기본 설정에서는 HTTP 80 규칙이 없고, 아웃바운드는 전체 허용입니다. AWS가 자동으로 만드는 `default` 보안 그룹도 표시되므로 `GroupName`과 `Name` 태그로 구분합니다.
+
+**⑥ EC2와 네트워크·스토리지 연결 확인**
+
+```bash
+aws ec2 describe-instances --region us-east-1 --no-cli-pager \
+  --filters "Name=vpc-id,Values=$ci_dev_vpc,$ci_test_vpc" "Name=instance-state-name,Values=pending,running,stopping,stopped" \
+  --query 'Reservations[].Instances[].{Name:Tags[?Key==`Name`]|[0].Value,ID:InstanceId,State:State.Name,VPC:VpcId,Subnet:SubnetId,PrivateIP:PrivateIpAddress,PublicIP:PublicIpAddress,SecurityGroups:SecurityGroups,KeyPair:KeyName,ENIs:NetworkInterfaces[].NetworkInterfaceId,EBS:BlockDeviceMappings[].Ebs.VolumeId,Profile:IamInstanceProfile.Arn}' \
+  --output json
+```
+
+各環境ではなく、dev/testそれぞれの実際の値を比較します。
+
+**⑦ ENI(네트워크 인터페이스)의 연결 확인**
+
+```bash
+aws ec2 describe-network-interfaces --region us-east-1 --no-cli-pager \
+  --filters "Name=vpc-id,Values=$ci_dev_vpc,$ci_test_vpc" \
+  --query 'NetworkInterfaces[].{ENI:NetworkInterfaceId,VPC:VpcId,Subnet:SubnetId,Instance:Attachment.InstanceId,PrivateIP:PrivateIpAddress,PublicIP:Association.PublicIp,Groups:Groups}' \
+  --output json
+```
+
+EC2의 ENI가 해당 환경의 서브넷·보안 그룹과 연결되어 있는지 확인합니다.
+
+**⑧ EC2에 연결된 EBS 볼륨 확인**
+
+앞에서 저장한 dev/test 출력에서 이번 실습의 EC2 ID를 쉼표로 연결합니다.
+
+```bash
+ci_instance_ids=$(python3 - <<'PY'
+import json
+from pathlib import Path
+base = Path.home() / "cloud-infra/week10/environments"
+ids = []
+for env in ("dev", "test"):
+    with (base / env / f"{env}-before.json").open() as f:
+        ids.extend(json.load(f)["instance_ids"]["value"])
+print(",".join(ids))
+PY
+)
+printf '조회할 EC2: %s\n' "$ci_instance_ids"
+```
+
+```bash
+aws ec2 describe-volumes --region us-east-1 --no-cli-pager \
+  --filters "Name=attachment.instance-id,Values=$ci_instance_ids" \
+  --query 'Volumes[].{Volume:VolumeId,Type:VolumeType,GiB:Size,Encrypted:Encrypted,AZ:AvailabilityZone,Attachments:Attachments}' \
+  --output json
+```
+
+각 EC2의 루트 볼륨이 `gp3`·8 GiB·암호화 설정인지, `Attachments`의 EC2 ID와 ⑥의 EBS ID가 서로 연결되는지 확인합니다.
+
+**⑨ 실습 키 페어 확인**
+
+```bash
+aws ec2 describe-key-pairs --region us-east-1 --no-cli-pager \
+  --filters "Name=key-name,Values=ci-$(id -un)-dev-*,ci-$(id -un)-test-*" \
+  --query 'KeyPairs[].{Name:KeyName,ID:KeyPairId,Type:KeyType,Fingerprint:KeyFingerprint}' \
+  --output table
+```
+
+키 페어는 VPC 소속 자원이 아니므로 14·15번에서 지정한 환경별 이름 접두사로 조회합니다. ⑥의 `KeyPair`와 이름을 비교합니다. 이전에 같은 접두사로 만든 키가 남아 있다면 함께 표시될 수 있습니다.
+
+**확인할 결과**
+
+- dev/test 각각 VPC 1개, 서브넷 2개, 인터넷 게이트웨이 1개, 실습용 라우팅 테이블 1개와 서브넷 연결 2개, 실습용 보안 그룹과 규칙, 키 페어 1개, EC2 1개가 준비되어 있습니다.
+- EC2에는 ENI와 루트 EBS 볼륨이 연결되어 있습니다. 이들은 별도 Terraform resource 블록으로 선언하지 않아도 EC2 생성 과정에서 함께 만들어집니다.
+- `VPC → Subnet → EC2`, `Subnet → RouteTable → IGW`, `EC2 → SecurityGroup / KeyPair / ENI / EBS`의 ID를 대조하여 두 환경의 구성을 확인합니다.
+- AWS가 자동으로 생성한 기본 자원도 일부 조회되므로, 화면의 행 수를 Terraform의 생성 자원 수와 단순 비교하지 않습니다. 위 명령은 실습 구성과 직접 연결된 자원을 조회하며 계정의 모든 서비스 자원을 나열하는 명령은 아닙니다.
+
+명령 형식은 [AWS CLI EC2 조회 문서](https://docs.aws.amazon.com/cli/latest/reference/ec2/describe-instances.html)를 기준으로 작성했습니다. 이 추가 조회 단계는 실제 Learner Lab에서 실행 검증하지 않았습니다.
+
 ### 28. (학교 Ubuntu · 일반 사용자) dev의 태그 입력만 변경
 
 ![dev의 terraform.tfvars만 바꾸어 VPC 태그를 수정하고, test는 original 입력과 기존 자원을 유지하며 No changes를 확인합니다.](assets/dev-only-change.png)
