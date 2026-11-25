@@ -790,50 +790,37 @@ PY
 
 ### 27-1. (학교 Ubuntu · 일반 사용자) AWS CLI로 dev/test 전체 구성 확인
 
-AWS에 실제로 배포된 **VPC, 서브넷, EC2 가상머신**을 조회합니다. 아래 명령을 하나씩 실행하고 VPC·서브넷 ID로 연결 관계를 비교합니다.
+현재 AWS 계정의 `us-east-1` 리전에 있는 **모든 VPC, 서브넷, EC2 가상머신**을 조회합니다. 아래 명령을 하나씩 실행합니다. 기본 VPC나 다른 실습의 자원도 함께 표시되므로 `Name` 태그의 `ci-본인계정-dev`와 `ci-본인계정-test`를 찾아 비교합니다.
 
-**조회할 dev/test VPC 확인**
-
-```bash
-ci_dev_vpc=$(terraform -chdir="$HOME/cloud-infra/week10/environments/dev" output -raw vpc_id)
-ci_test_vpc=$(terraform -chdir="$HOME/cloud-infra/week10/environments/test" output -raw vpc_id)
-printf 'dev VPC : %s\ntest VPC: %s\n' "$ci_dev_vpc" "$ci_test_vpc"
-```
-
-두 VPC ID가 정상적으로 표시된 뒤 진행합니다.
-
-**① VPC 조회**
+**① 모든 VPC 조회**
 
 ```bash
 aws ec2 describe-vpcs --region us-east-1 --no-cli-pager \
-  --vpc-ids "$ci_dev_vpc" "$ci_test_vpc" \
   --query 'Vpcs[].{Name:Tags[?Key==`Name`]|[0].Value,VPC:VpcId,CIDR:CidrBlock}' \
   --output table
 ```
 
-dev의 `10.80.0.0/16`과 test의 `10.90.0.0/16`을 확인합니다.
+목록에서 dev의 `10.80.0.0/16`과 test의 `10.90.0.0/16`을 확인합니다.
 
-**② 서브넷 조회**
+**② 모든 서브넷 조회**
 
 ```bash
 aws ec2 describe-subnets --region us-east-1 --no-cli-pager \
-  --filters "Name=vpc-id,Values=$ci_dev_vpc,$ci_test_vpc" \
   --query 'Subnets[].{Name:Tags[?Key==`Name`]|[0].Value,VPC:VpcId,Subnet:SubnetId,CIDR:CidrBlock,AZ:AvailabilityZone}' \
   --output table
 ```
 
-각 VPC에 서브넷이 2개씩, 총 4개입니다. 환경마다 `us-east-1a`와 `us-east-1b`에 하나씩 배치되었는지 확인합니다.
+앞에서 확인한 dev/test VPC ID를 찾아 각 환경의 서브넷을 구분합니다. 이번 실습에서 만든 서브넷은 환경별 2개씩 총 4개이며, 각각 `us-east-1a`와 `us-east-1b`에 배치됩니다.
 
-**③ EC2 가상머신 조회**
+**③ 모든 EC2 가상머신 조회**
 
 ```bash
 aws ec2 describe-instances --region us-east-1 --no-cli-pager \
-  --filters "Name=vpc-id,Values=$ci_dev_vpc,$ci_test_vpc" "Name=instance-state-name,Values=pending,running,stopping,stopped" \
   --query 'Reservations[].Instances[].{Name:Tags[?Key==`Name`]|[0].Value,ID:InstanceId,State:State.Name,VPC:VpcId,Subnet:SubnetId,PublicIP:PublicIpAddress}' \
   --output table
 ```
 
-기본 입력값에서는 dev/test에 가상머신이 1개씩, 총 2개입니다. 각 가상머신의 `VPC`와 `Subnet`을 앞의 표와 대조하여 **어느 환경의 어느 서브넷에 배치되었는지** 확인합니다. `server_count = 1`이므로 각 환경의 첫 번째 서브넷에만 가상머신이 있습니다.
+기본 입력값에서는 이번 실습의 가상머신이 dev/test에 1개씩 총 2개입니다. 각 가상머신의 `VPC`와 `Subnet`을 앞의 표와 대조하여 **어느 환경의 어느 서브넷에 배치되었는지** 확인합니다. `server_count = 1`이므로 각 환경의 첫 번째 서브넷에만 가상머신이 있습니다. 중지된 인스턴스나 최근 종료된 인스턴스도 표시될 수 있으므로 `State`를 함께 확인합니다.
 
 ### 28. (학교 Ubuntu · 일반 사용자) dev의 태그 입력만 변경
 
