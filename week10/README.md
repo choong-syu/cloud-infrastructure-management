@@ -587,7 +587,7 @@ PY
 
 **확인할 결과**
 
-자신의 실행 환경에서 조회한 IPv4/32가 나옵니다. IP가 바뀌면 이 단계부터 다시 실행하고 plan/apply합니다.
+자신의 실행 환경에서 조회한 IPv4/32가 나옵니다. 23번에서는 이 파일을 test로 복사하므로 같은 주소를 다시 조회하지 않습니다. IP가 바뀌면 dev에서 이 단계를 다시 실행하고 test에 다시 복사한 뒤 각 환경에서 plan/apply합니다.
 
 ### 18. (학교 Ubuntu · 일반 사용자) 초기화·형식 정리·문법 확인
 
@@ -694,29 +694,22 @@ pwd
 
 현재 경로가 `/home/자신의계정/cloud-infra/week10/environments/test`입니다.
 
-### 23. (학교 Ubuntu · 일반 사용자) 학교 VM의 접속 주소를 변수 파일로 저장
+### 23. (학교 Ubuntu · 일반 사용자) dev의 접속 주소 설정을 test로 복사
+
+같은 학교 VM에서 이어서 실습하므로 공인 IP를 다시 조회하지 않고, 17번에서 만든 접속 주소 설정을 재사용합니다.
 
 ```bash
-ci_source_ip=$(curl -fsS https://checkip.amazonaws.com)
-python3 - "$ci_source_ip" <<'PY'
-import ipaddress, json, sys
-address = str(ipaddress.IPv4Address(sys.argv[1].strip()))
-with open("connection.auto.tfvars.json", "w") as f:
-    json.dump({"ssh_cidr": address + "/32"}, f, indent=2)
-print("허용할 학교 VM 출구 주소:", address + "/32")
-PY
+cp ../dev/connection.auto.tfvars.json .
+cat connection.auto.tfvars.json
 ```
 
 **명령어 풀이**
 
-- `$(...)`는 명령 결과를 셸 변수에 넣습니다. 여기서는 학교 VM에서 AWS로 나가는 공인 주소를 구합니다.
-- Python은 IPv4 형식을 확인하고 Terraform이 자동으로 읽는 `.auto.tfvars.json` 파일을 만듭니다.
-- `/32`는 해당 주소 하나만 뜻합니다. SSH를 전 세계에 열지 않습니다.
-- 같은 학교 출구 주소를 공유하는 환경이면 다른 학교 사용자도 네트워크 접근은 가능하지만 로그인에는 자신의 개인 키가 필요합니다.
+dev/test는 별도 루트이므로 각 폴더에 `connection.auto.tfvars.json`이 필요합니다. 여기서는 SSH 접속을 허용할 주소만 복사합니다. State나 `.terraform` 폴더를 복사하는 것이 아니므로 두 환경의 자원 관리는 계속 분리됩니다.
 
 **확인할 결과**
 
-자신의 실행 환경에서 조회한 IPv4/32가 나옵니다. IP가 바뀌면 이 단계부터 다시 실행하고 plan/apply합니다.
+dev와 같은 `ssh_cidr` 값이 표시됩니다. 학교 VM의 출구 IP가 바뀌었다면 dev에서 17번을 다시 실행하고, test에서 이 복사를 다시 수행한 뒤 각 환경에서 plan/apply합니다.
 
 ### 24. (학교 Ubuntu · 일반 사용자) 초기화·형식 정리·문법 확인
 
