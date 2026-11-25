@@ -591,29 +591,8 @@ PY
 
 ### 18. (학교 Ubuntu · 일반 사용자) 초기화·형식 정리·문법 확인
 
-먼저 초기화만 실행하여 Provider 버전이 선택되는 과정을 확인합니다.
-
 ```bash
 terraform init
-```
-
-**확인할 결과**
-
-처음 초기화할 때 `6.71.0`이 선택된 경우 다음과 같은 로그가 표시됩니다.
-
-```text
-- Finding hashicorp/aws versions matching ">= 6.70.0, >= 6.71.0, < 6.72.0"...
-- Installing hashicorp/aws v6.71.0...
-- Installed hashicorp/aws v6.71.0 (signed by HashiCorp)
-```
-
-첫 줄은 root의 `>= 6.70.0, < 6.72.0`과 child의 `>= 6.71.0`을 모두 고려한다는 뜻입니다. 이어서 두 모듈의 요구사항을 만족하는 **AWS Provider 버전 하나**를 설치합니다. 예시의 `6.71.0`은 두 조건을 모두 만족하며, 선택 결과는 `.terraform.lock.hcl`에 기록됩니다.
-
-정확한 패치 버전은 실행 시점과 기존 lock 파일에 따라 달라질 수 있습니다. 이미 초기화한 폴더에서는 새로 설치하는 대신 기존 선택이나 설치 파일을 재사용한다는 로그가 나올 수 있습니다.
-
-초기화가 성공한 것을 확인한 뒤 형식 정리와 문법 확인을 실행합니다.
-
-```bash
 terraform fmt -recursive
 terraform validate
 ```
@@ -629,7 +608,7 @@ terraform validate
 
 ### Provider 요구사항과 선택 버전 확인
 
-같은 dev 폴더에서 다음 명령을 실행합니다.
+같은 dev 폴더에서 다음 명령을 하나씩 실행하고 결과를 확인합니다.
 
 ```bash
 terraform providers
@@ -749,11 +728,17 @@ terraform validate
 
 `Success! The configuration is valid.`가 표시됩니다.
 
-test에서도 요구사항과 선택 버전을 확인합니다.
+test에서도 다음 명령을 하나씩 실행하여 요구사항과 선택 버전을 확인합니다.
 
 ```bash
 terraform providers
+```
+
+```bash
 terraform version
+```
+
+```bash
 cat .terraform.lock.hcl
 ```
 
